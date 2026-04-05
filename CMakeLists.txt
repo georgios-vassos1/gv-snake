@@ -20,7 +20,7 @@ target_compile_options(snake_core PRIVATE -Wall -Wextra -O2)
 target_link_libraries(snake_core PUBLIC Threads::Threads)
 
 # ── Main executable ───────────────────────────────────────────────────────────
-add_executable(snake main.cpp)
+add_executable(snake src/main.cpp)
 target_compile_options(snake PRIVATE -Wall -Wextra -O2)
 target_link_libraries(snake PRIVATE snake_core)
 
