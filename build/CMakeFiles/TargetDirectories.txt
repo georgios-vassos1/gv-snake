@@ -1,0 +1,7 @@
+/Users/georgios.vassos1/mySnake/build/CMakeFiles/snake_core.dir
+/Users/georgios.vassos1/mySnake/build/CMakeFiles/snake.dir
+/Users/georgios.vassos1/mySnake/build/CMakeFiles/point_test.dir
+/Users/georgios.vassos1/mySnake/build/CMakeFiles/list_test.dir
+/Users/georgios.vassos1/mySnake/build/CMakeFiles/test.dir
+/Users/georgios.vassos1/mySnake/build/CMakeFiles/edit_cache.dir
+/Users/georgios.vassos1/mySnake/build/CMakeFiles/rebuild_cache.dir
