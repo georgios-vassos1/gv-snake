@@ -1,2 +1,0 @@
-/usr/bin/ar qc libsnake_core.a CMakeFiles/snake_core.dir/src/Point.cpp.o CMakeFiles/snake_core.dir/src/List.cpp.o CMakeFiles/snake_core.dir/src/ShitList.cpp.o CMakeFiles/snake_core.dir/src/Terrain.cpp.o CMakeFiles/snake_core.dir/src/mygetch.cpp.o
-/usr/bin/ranlib libsnake_core.a
