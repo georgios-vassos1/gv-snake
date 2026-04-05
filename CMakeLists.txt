@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.14)
-project(snake VERSION 0.2 LANGUAGES CXX)
+project(snake VERSION 0.3 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -12,12 +12,25 @@ add_library(snake_core STATIC
     src/Point.cpp
     src/List.cpp
     src/ShitList.cpp
-    src/Terrain.cpp
+    src/Game.cpp
+    src/TerminalRenderer.cpp
     src/mygetch.cpp
 )
 target_include_directories(snake_core PUBLIC include)
 target_compile_options(snake_core PRIVATE -Wall -Wextra -O2)
 target_link_libraries(snake_core PUBLIC Threads::Threads)
+
+# ── Optional SDL2 graphics backend ────────────────────────────────────────────
+find_package(SDL2 QUIET)
+if(SDL2_FOUND)
+    message(STATUS "SDL2 found — graphics mode enabled")
+    target_sources(snake_core PRIVATE src/GraphicsRenderer.cpp)
+    target_compile_definitions(snake_core PUBLIC GRAPHICS_AVAILABLE)
+    target_include_directories(snake_core PUBLIC ${SDL2_INCLUDE_DIRS})
+    target_link_libraries(snake_core PUBLIC SDL2::SDL2)
+else()
+    message(STATUS "SDL2 not found — terminal-only build")
+endif()
 
 # ── Main executable ───────────────────────────────────────────────────────────
 add_executable(snake src/main.cpp)

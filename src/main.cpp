@@ -1,13 +1,17 @@
-#include "Terrain.hpp"
-#include "Thread_Data.hpp"
+#include "Game.hpp"
+#include "IRenderer.hpp"
+#include "TerminalRenderer.hpp"
 #include "mygetch.hpp"
 #include <iostream>
+#include <cstring>
 #include <cstdio>
 #include <cstdlib>
-#include <pthread.h>
 
-static const int NUM_THREADS = 2;
-static const int GRID_SIZE   = 50;
+#ifdef GRAPHICS_AVAILABLE
+#include "GraphicsRenderer.hpp"
+#endif
+
+static const int GRID_SIZE = 50;
 
 static void cleanup()
 {
@@ -16,34 +20,36 @@ static void cleanup()
     std::cout.flush();
 }
 
-int main()
+int main(int argc, char* argv[])
 {
-    std::atexit(cleanup);
-    initGetch();
-
-    // Clear screen, move cursor home, hide cursor.
-    std::cout << "\033[2J\033[H\033[?25l";
-    std::cout.flush();
-
-    tdata args[NUM_THREADS];
-
-    args[0].tid     = 0;
-    args[0].carrier = new Terrain;
-    args[0].carrier->setDaBorder(GRID_SIZE);
-    args[0].carrier->fillA(true, true);
-    args[0].carrier->draw();
-
-    args[1].tid     = 1;
-    args[1].carrier = args[0].carrier;
-
-    pthread_t t[NUM_THREADS];
-    for (int i = 0; i < NUM_THREADS; i++) {
-        int rc = pthread_create(&t[i], nullptr, &Terrain::moveDaShit_helper, &args[i]);
-        if (rc) {
-            std::fprintf(stderr, "ERROR: pthread_create failed (code %d)\n", rc);
-            return EXIT_FAILURE;
-        }
+    bool useGraphics = false;
+    for (int i = 1; i < argc; ++i) {
+        if (std::strcmp(argv[i], "--graphics") == 0)
+            useGraphics = true;
     }
 
-    pthread_exit(nullptr);
+    if (useGraphics) {
+#ifdef GRAPHICS_AVAILABLE
+        Game             game(GRID_SIZE);
+        GraphicsRenderer renderer(GRID_SIZE);
+        renderer.run(game);
+#else
+        std::fprintf(stderr,
+            "Graphics mode not available (SDL2 not found at build time).\n"
+            "Run without --graphics to use terminal mode.\n");
+        return EXIT_FAILURE;
+#endif
+    } else {
+        std::atexit(cleanup);
+        initGetch();
+
+        std::cout << "\033[2J\033[H\033[?25l";
+        std::cout.flush();
+
+        Game             game(GRID_SIZE);
+        TerminalRenderer renderer;
+        renderer.run(game);
+    }
+
+    return 0;
 }
