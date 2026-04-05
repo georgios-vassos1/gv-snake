@@ -7,6 +7,7 @@ enum class TickResult { Running, GameOver, AteFruit };
 
 class Game {
     int      border;
+    int      score;
     char**   A;
     ShitList daCrap;
     Point    fruit;
@@ -30,6 +31,7 @@ public:
     Game& operator=(const Game&) = delete;
 
     int          getBorder() const { return border; }
+    int          getScore()  const { return score;  }
     const Point& getFruit()  const { return fruit;  }
     char* const* grid()      const { return A;       }
 

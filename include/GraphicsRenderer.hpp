@@ -13,6 +13,7 @@ class GraphicsRenderer : public IRenderer {
 
     SDL_Window*   window;
     SDL_Renderer* sdlRenderer;
+    int           highScore;
 
     void draw(const Game& game) const;
 

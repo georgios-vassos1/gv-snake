@@ -1,6 +1,7 @@
 #ifdef GRAPHICS_AVAILABLE
 
 #include "GraphicsRenderer.hpp"
+#include "HighScore.hpp"
 #include <cstdio>
 
 // Colours (R, G, B, A)
@@ -11,7 +12,7 @@ static const SDL_Color COL_BODY   = { 30, 130,  30, 255};
 static const SDL_Color COL_FRUIT  = {220,  50,  50, 255};
 
 GraphicsRenderer::GraphicsRenderer(int border)
-    : window(nullptr), sdlRenderer(nullptr)
+    : window(nullptr), sdlRenderer(nullptr), highScore(loadHighScore())
 {
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         std::fprintf(stderr, "SDL_Init error: %s\n", SDL_GetError());
@@ -109,7 +110,16 @@ void GraphicsRenderer::run(Game& game)
             if (currentDir != 0 && currentDir != ' ') {
                 TickResult result = game.tick(currentDir);
                 draw(game);
+                {
+                    char buf[64];
+                    std::snprintf(buf, sizeof(buf), "Snake  Score: %d  Best: %d",
+                                  game.getScore(), highScore);
+                    SDL_SetWindowTitle(window, buf);
+                }
                 if (result == TickResult::GameOver) {
+                    const int finalScore = game.getScore();
+                    if (finalScore > highScore)
+                        saveHighScore(finalScore);
                     // Show game over — wait until window closed or Escape.
                     SDL_Event qe;
                     while (SDL_WaitEvent(&qe)) {

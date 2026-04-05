@@ -10,7 +10,7 @@ const char Game::FRUIT_CHAR     = 'X';
 const char Game::EMPTY_CHAR     = ' ';
 
 Game::Game(int b)
-    : border(b), A(nullptr)
+    : border(b), score(0), A(nullptr)
 {
     std::srand(static_cast<unsigned int>(std::time(nullptr)));
     createA();
@@ -88,6 +88,7 @@ TickResult Game::tick(char dir)
         else                 growPt = Point(head->data.getX(),     head->data.getY() - 1);
         daCrap.addPart(growPt);
         buildGrid(true);
+        ++score;
         return TickResult::AteFruit;
     }
 

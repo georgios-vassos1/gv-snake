@@ -1,4 +1,5 @@
 #include "TerminalRenderer.hpp"
+#include "HighScore.hpp"
 #include "mygetch.hpp"
 #include <iostream>
 #include <cstdio>
@@ -8,7 +9,7 @@
 static const int TICK_US = 70000;
 
 TerminalRenderer::TerminalRenderer()
-    : inputThread(0), currentMove(0)
+    : inputThread(0), currentMove(0), highScore(loadHighScore())
 {
     pthread_mutex_init(&mutex, nullptr);
 }
@@ -42,6 +43,7 @@ void TerminalRenderer::draw(const Game& game) const
             std::cout << A[i][j];
         std::cout << '\n';
     }
+    std::printf("Score: %d   Best: %d\033[K\n", game.getScore(), highScore);
     std::cout.flush();
 }
 
@@ -77,7 +79,14 @@ void TerminalRenderer::run(Game& game)
     pthread_cancel(inputThread);
     pthread_join(inputThread, nullptr);
 
-    std::cout << "\nGame Over!  Press any key to exit.\n";
+    const int finalScore = game.getScore();
+    if (finalScore > highScore) {
+        saveHighScore(finalScore);
+        std::printf("\nNew high score: %d!\n", finalScore);
+    } else {
+        std::printf("\nHigh score: %d\n", highScore);
+    }
+    std::cout << "Press any key to exit.\n";
     std::cout.flush();
     getch();
 }

@@ -13,6 +13,7 @@ add_library(snake_core STATIC
     src/List.cpp
     src/ShitList.cpp
     src/Game.cpp
+    src/HighScore.cpp
     src/TerminalRenderer.cpp
     src/mygetch.cpp
 )
@@ -47,3 +48,7 @@ add_test(NAME point_test COMMAND point_test)
 add_executable(list_test tests/List_test.cpp)
 target_link_libraries(list_test PRIVATE snake_core)
 add_test(NAME list_test COMMAND list_test)
+
+add_executable(score_test tests/score_test.cpp)
+target_link_libraries(score_test PRIVATE snake_core)
+add_test(NAME score_test COMMAND score_test)
