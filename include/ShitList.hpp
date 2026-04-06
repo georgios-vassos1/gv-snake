@@ -33,6 +33,10 @@ public:
 
     void addPart(const Point&);
     void addPart(int, int);
+
+private:
+    Point nextHead(char, int) const;
+    void  move(char, int);
 };
 
 #endif

@@ -31,249 +31,78 @@ bool ShitList::getValidness() const { return validness; }
 void ShitList::setLastMove(char m)  { lastMove = m; }
 char ShitList::getLastMove()  const { return lastMove; }
 
-void ShitList::moveDaShitUp(int x)
+/// Compute the position the head will occupy after one step in direction dir,
+/// wrapping at the playfield boundary.  Positions are 1-based within
+/// [1, gridSize-2] on each axis.
+Point ShitList::nextHead(char dir, int gridSize) const
 {
-    if (isFree('w', x)) {
-        if (isFree('w', x, 0)) {
-            Point newFirst(((x-4) + daShit.getFirst()->data.getX()) % (x-2) + 1,
-                           daShit.getFirst()->data.getY());
-            daShit.deleteLast();
-            daShit.insertFirst(newFirst);
-            setLastMove('w');
-            validness = true;
-        }
-        else if (getLastMove() == 's') moveDaShitDown(x);
-        else if (getLastMove() == 'a') moveDaShitLeft(x);
-        else if (getLastMove() == 'd') moveDaShitRight(x);
+    const int field = gridSize - 2;
+    const int hx    = daShit.getFirst()->data.getX();
+    const int hy    = daShit.getFirst()->data.getY();
+    switch (dir) {
+        case 'w': return Point((hx - 2 + field) % field + 1, hy);
+        case 's': return Point( hx % field + 1,               hy);
+        case 'a': return Point(hx, (hy - 2 + field) % field + 1);
+        case 'd': return Point(hx,  hy % field + 1);
+        default:  return daShit.getFirst()->data; // unreachable
     }
-    else {
+}
+
+/// Returns true if the next head position (for dir) does not collide with any
+/// body segment from the 4th node onward.  The tail node is excluded because
+/// it will have moved away by the time the head arrives.
+bool ShitList::isFree(char dir, int gridSize)
+{
+    if (!daShit.getFirst()) return false;
+
+    const Point next = nextHead(dir, gridSize);
+    ListNode *current = advanceN(daShit.getFirst(), 3);
+    while (current) {
+        if (current == daShit.getLast()) return true; // tail moves away; safe
+        if (current->data.getX() == next.getX() &&
+            current->data.getY() == next.getY())
+            return false;
+        current = current->next;
+    }
+    return true;
+}
+
+/// Returns true if the next head position (for dir) does not collide with the
+/// neck (the 2nd segment).  Used to reject a 180-degree reversal.
+bool ShitList::isFree(char dir, int gridSize, int /*type*/)
+{
+    if (!daShit.getFirst() || !daShit.getFirst()->next) return false;
+
+    const Point next = nextHead(dir, gridSize);
+    const Point& neck = daShit.getFirst()->next->data;
+    return !(next.getX() == neck.getX() && next.getY() == neck.getY());
+}
+
+/// Core movement: validates the requested direction, falls back to the last
+/// direction when the move would enter the neck, and executes the step.
+void ShitList::move(char dir, int gridSize)
+{
+    if (!isFree(dir, gridSize)) {
         validness = false;
         std::cout << "\nGame Over! Press any key to exit.\n";
+        return;
     }
+    if (!isFree(dir, gridSize, 0)) {
+        // Input would put head into its own neck; keep going in last direction.
+        if (lastMove != dir && lastMove != 0)
+            move(lastMove, gridSize);
+        return;
+    }
+    daShit.deleteLast();
+    daShit.insertFirst(nextHead(dir, gridSize));
+    lastMove  = dir;
+    validness = true;
 }
 
-void ShitList::moveDaShitDown(int x)
-{
-    if (isFree('s', x)) {
-        if (isFree('s', x, 0)) {
-            Point newFirst((daShit.getFirst()->data.getX() % (x-2)) + 1,
-                           daShit.getFirst()->data.getY());
-            daShit.deleteLast();
-            daShit.insertFirst(newFirst);
-            setLastMove('s');
-            validness = true;
-        }
-        else if (getLastMove() == 'w') moveDaShitUp(x);
-        else if (getLastMove() == 'a') moveDaShitLeft(x);
-        else if (getLastMove() == 'd') moveDaShitRight(x);
-    }
-    else {
-        validness = false;
-        std::cout << "\nGame Over! Press any key to exit.\n";
-    }
-}
-
-void ShitList::moveDaShitLeft(int y)
-{
-    if (isFree('a', y)) {
-        if (isFree('a', y, 0)) {
-            Point newFirst(daShit.getFirst()->data.getX(),
-                           ((y-4) + daShit.getFirst()->data.getY()) % (y-2) + 1);
-            daShit.deleteLast();
-            daShit.insertFirst(newFirst);
-            setLastMove('a');
-            validness = true;
-        }
-        else if (getLastMove() == 'w') moveDaShitUp(y);
-        else if (getLastMove() == 's') moveDaShitDown(y);
-        else if (getLastMove() == 'd') moveDaShitRight(y);
-    }
-    else {
-        validness = false;
-        std::cout << "\nGame Over! Press any key to exit.\n";
-    }
-}
-
-void ShitList::moveDaShitRight(int y)
-{
-    if (isFree('d', y)) {
-        if (isFree('d', y, 0)) {
-            Point newFirst(daShit.getFirst()->data.getX(),
-                           (daShit.getFirst()->data.getY() % (y-2)) + 1);
-            daShit.deleteLast();
-            daShit.insertFirst(newFirst);
-            setLastMove('d');
-            validness = true;
-        }
-        else if (getLastMove() == 'w') moveDaShitUp(y);
-        else if (getLastMove() == 's') moveDaShitDown(y);
-        else if (getLastMove() == 'a') moveDaShitLeft(y);
-    }
-    else {
-        validness = false;
-        std::cout << "\nGame Over! Press any key to exit.\n";
-    }
-}
-
-bool ShitList::isFree(char m, int c)
-{
-    if (daShit.getFirst() == nullptr)
-        return false;
-
-    if (m == 'w') {
-        if (daShit.getFirst()->data.getX() == 1) {
-            ListNode *current = advanceN(daShit.getFirst(), 3);
-            while (current != nullptr) {
-                if (current == daShit.getLast())
-                    return true;
-                if (daShit.getFirst()->data.getX() == (c-2) - current->data.getX() + 1 &&
-                    daShit.getFirst()->data.getY() == current->data.getY())
-                    return false;
-                current = current->next;
-            }
-            return true;
-        }
-        ListNode *current = advanceN(daShit.getFirst(), 3);
-        while (current != nullptr) {
-            if (current == daShit.getLast())
-                return true;
-            if (daShit.getFirst()->data.getX() == current->data.getX() + 1 &&
-                daShit.getFirst()->data.getY() == current->data.getY())
-                return false;
-            current = current->next;
-        }
-        return true;
-    }
-    else if (m == 'a') {
-        if (daShit.getFirst()->data.getY() == 1) {
-            ListNode *current = advanceN(daShit.getFirst(), 3);
-            while (current != nullptr) {
-                if (daShit.getFirst()->data.getX() == current->data.getX() &&
-                    daShit.getFirst()->data.getY() == (c-2) - current->data.getY() + 1 &&
-                    current != daShit.getLast())
-                    return false;
-                current = current->next;
-            }
-            return true;
-        }
-        ListNode *current = advanceN(daShit.getFirst(), 3);
-        while (current != nullptr) {
-            if (daShit.getFirst()->data.getX() == current->data.getX() &&
-                daShit.getFirst()->data.getY() == current->data.getY() + 1 &&
-                current != daShit.getLast())
-                return false;
-            current = current->next;
-        }
-        return true;
-    }
-    else if (m == 'd') {
-        if (daShit.getFirst()->data.getY() == c - 2) {
-            ListNode *current = advanceN(daShit.getFirst(), 3);
-            while (current != nullptr) {
-                if (daShit.getFirst()->data.getX() == current->data.getX() &&
-                    daShit.getFirst()->data.getY() == current->data.getY() + (c-2) - 1 &&
-                    current != daShit.getLast())
-                    return false;
-                current = current->next;
-            }
-            return true;
-        }
-        ListNode *current = advanceN(daShit.getFirst(), 3);
-        while (current != nullptr) {
-            if (daShit.getFirst()->data.getX() == current->data.getX() &&
-                daShit.getFirst()->data.getY() == current->data.getY() - 1 &&
-                current != daShit.getLast())
-                return false;
-            current = current->next;
-        }
-        return true;
-    }
-    else if (m == 's') {
-        if (daShit.getFirst()->data.getX() == c - 2) {
-            ListNode *current = advanceN(daShit.getFirst(), 3);
-            while (current != nullptr) {
-                if (daShit.getFirst()->data.getX() == current->data.getX() + (c-2) - 1 &&
-                    daShit.getFirst()->data.getY() == current->data.getY() &&
-                    current != daShit.getLast())
-                    return false;
-                current = current->next;
-            }
-            return true;
-        }
-        ListNode *current = advanceN(daShit.getFirst(), 3);
-        while (current != nullptr) {
-            if (daShit.getFirst()->data.getX() == current->data.getX() - 1 &&
-                daShit.getFirst()->data.getY() == current->data.getY() &&
-                current != daShit.getLast())
-                return false;
-            current = current->next;
-        }
-        return true;
-    }
-    else {
-        std::cout << "Move Not Valid!!!" << std::endl;
-        return false;
-    }
-}
-
-bool ShitList::isFree(char m, int c, int /*type*/)
-{
-    if (daShit.getFirst() == nullptr || daShit.getFirst()->next == nullptr)
-        return false;
-
-    if (m == 'w') {
-        if (daShit.getFirst()->data.getX() == 1) {
-            if (daShit.getFirst()->data.getX() == (c-2) - daShit.getFirst()->next->data.getX() + 1 &&
-                daShit.getFirst()->data.getY() == daShit.getFirst()->next->data.getY())
-                return false;
-            return true;
-        }
-        if (daShit.getFirst()->data.getX() == daShit.getFirst()->next->data.getX() + 1 &&
-            daShit.getFirst()->data.getY() == daShit.getFirst()->next->data.getY())
-            return false;
-        return true;
-    }
-    else if (m == 'a') {
-        if (daShit.getFirst()->data.getY() == 1) {
-            if (daShit.getFirst()->data.getX() == daShit.getFirst()->next->data.getX() &&
-                daShit.getFirst()->data.getY() == (c-2) - daShit.getFirst()->next->data.getY() + 1)
-                return false;
-            return true;
-        }
-        if (daShit.getFirst()->data.getX() == daShit.getFirst()->next->data.getX() &&
-            daShit.getFirst()->data.getY() == daShit.getFirst()->next->data.getY() + 1)
-            return false;
-        return true;
-    }
-    else if (m == 'd') {
-        if (daShit.getFirst()->data.getY() == c - 2) {
-            if (daShit.getFirst()->data.getX() == daShit.getFirst()->next->data.getX() &&
-                daShit.getFirst()->data.getY() == daShit.getFirst()->next->data.getY() + (c-2) - 1)
-                return false;
-            return true;
-        }
-        if (daShit.getFirst()->data.getX() == daShit.getFirst()->next->data.getX() &&
-            daShit.getFirst()->data.getY() == daShit.getFirst()->next->data.getY() - 1)
-            return false;
-        return true;
-    }
-    else if (m == 's') {
-        if (daShit.getFirst()->data.getX() == c - 2) {
-            if (daShit.getFirst()->data.getX() == daShit.getFirst()->next->data.getX() + (c-2) - 1 &&
-                daShit.getFirst()->data.getY() == daShit.getFirst()->next->data.getY())
-                return false;
-            return true;
-        }
-        if (daShit.getFirst()->data.getX() == daShit.getFirst()->next->data.getX() - 1 &&
-            daShit.getFirst()->data.getY() == daShit.getFirst()->next->data.getY())
-            return false;
-        return true;
-    }
-    else {
-        std::cout << "Move Not Valid!!!" << std::endl;
-        return false;
-    }
-}
+void ShitList::moveDaShitUp   (int x) { move('w', x); }
+void ShitList::moveDaShitDown (int x) { move('s', x); }
+void ShitList::moveDaShitLeft (int y) { move('a', y); }
+void ShitList::moveDaShitRight(int y) { move('d', y); }
 
 void ShitList::addPart(const Point& location)
 {
