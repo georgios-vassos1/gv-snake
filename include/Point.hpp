@@ -1,8 +1,7 @@
 #ifndef POINT_H
 #define POINT_H
 
-class Point
-{
+class Point {
     int x, y;
 
 public:

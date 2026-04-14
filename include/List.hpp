@@ -5,15 +5,14 @@
 
 struct ListNode {
     Point     data;
-    ListNode *next;
-    ListNode *prev;
+    ListNode* next;
+    ListNode* prev;
     ListNode(int x, int y);
 };
 
-class List
-{
-    ListNode *first;
-    ListNode *last;
+class List {
+    ListNode* first;
+    ListNode* last;
 
 public:
     List();
@@ -22,12 +21,12 @@ public:
     List& operator=(const List&) = delete;
 
     ListNode* getFirst() const;
-    ListNode* getLast()  const;
+    ListNode* getLast() const;
 
     void insertFirst(const Point&);
-    void insertLast (const Point&);
+    void insertLast(const Point&);
     void deleteFirst();
-    void deleteLast ();
+    void deleteLast();
     void deleteDaList();
     bool isEmpty() const;
     void printDaList() const;

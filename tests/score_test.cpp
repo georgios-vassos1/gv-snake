@@ -1,17 +1,21 @@
 #include "Game.hpp"
 #include "HighScore.hpp"
+#include <cassert>
 #include <cstdio>
 #include <cstdlib>
-#include <cassert>
 
 // Scan the grid for the head character 'A'.
 static void getHeadPos(const Game& g, int& hx, int& hy)
 {
-    const int b = g.getBorder();
+    const int    b = g.getBorder();
     char* const* A = g.grid();
     for (int i = 0; i < b; i++)
         for (int j = 0; j < b; j++)
-            if (A[i][j] == 'A') { hx = i; hy = j; return; }
+            if (A[i][j] == 'A') {
+                hx = i;
+                hy = j;
+                return;
+            }
     hx = hy = -1;
 }
 
@@ -41,17 +45,17 @@ int main()
 
     // ── Test 3: Steer toward fruit; score must increment on AteFruit ──────────
     // Greedy: close the largest gap first.  Large grid gives room to manoeuvre.
-    int eaten = 0;
-    bool dead = false;
+    int  eaten = 0;
+    bool dead  = false;
     for (int step = 0; step < 500 && eaten < 3; ++step) {
         int hx, hy;
         getHeadPos(g, hx, hy);
         const int fx = g.getFruit().getX();
         const int fy = g.getFruit().getY();
 
-        char dir;
-        const int dx = hx - fx;   // positive → head is below fruit (need 'w')
-        const int dy = hy - fy;   // positive → head is right of fruit (need 'a')
+        char      dir;
+        const int dx = hx - fx; // positive → head is below fruit (need 'w')
+        const int dy = hy - fy; // positive → head is right of fruit (need 'a')
         if (std::abs(dx) >= std::abs(dy))
             dir = (dx > 0) ? 'w' : 's';
         else
@@ -59,19 +63,18 @@ int main()
 
         TickResult r = g.tick(dir);
         if (r == TickResult::GameOver) {
-            std::printf("NOTE  Snake died at step %d before eating %d fruit(s)\n",
-                        step, 3 - eaten);
+            std::printf("NOTE  Snake died at step %d before eating %d fruit(s)\n", step, 3 - eaten);
             dead = true;
             break;
         }
         if (r == TickResult::AteFruit) {
             ++eaten;
             if (g.getScore() == eaten) {
-                std::printf("PASS  Ate fruit #%d at step %d  score=%d\n",
-                            eaten, step, g.getScore());
+                std::printf("PASS  Ate fruit #%d at step %d  score=%d\n", eaten, step,
+                            g.getScore());
             } else {
-                std::printf("FAIL  Score mismatch after fruit #%d: expected %d, got %d\n",
-                            eaten, eaten, g.getScore());
+                std::printf("FAIL  Score mismatch after fruit #%d: expected %d, got %d\n", eaten,
+                            eaten, g.getScore());
                 ++failures;
             }
         }
@@ -88,16 +91,17 @@ int main()
 
     // ── Test 5: saveHighScore only when beaten ────────────────────────────────
     saveHighScore(1000);
-    int before = loadHighScore();
+    int       before    = loadHighScore();
     const int fakeScore = 5;
-    if (fakeScore > before) saveHighScore(fakeScore);
+    if (fakeScore > before)
+        saveHighScore(fakeScore);
     int after = loadHighScore();
     if (after == before) {
         std::printf("\nPASS  High score not overwritten when new score (%d) <= best (%d)\n",
                     fakeScore, before);
     } else {
-        std::printf("\nFAIL  High score was overwritten: %d → %d (should stay %d)\n",
-                    before, after, before);
+        std::printf("\nFAIL  High score was overwritten: %d → %d (should stay %d)\n", before, after,
+                    before);
         ++failures;
     }
     saveHighScore(0); // clean up

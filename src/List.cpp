@@ -10,12 +10,18 @@ List::~List()
     deleteDaList();
 }
 
-ListNode* List::getFirst() const { return first; }
-ListNode* List::getLast()  const { return last;  }
+ListNode* List::getFirst() const
+{
+    return first;
+}
+ListNode* List::getLast() const
+{
+    return last;
+}
 
 void List::insertFirst(const Point& p)
 {
-    ListNode *node = new ListNode(p.getX(), p.getY());
+    ListNode* node = new ListNode(p.getX(), p.getY());
     if (isEmpty())
         last = node;
     else {
@@ -27,7 +33,7 @@ void List::insertFirst(const Point& p)
 
 void List::insertLast(const Point& p)
 {
-    ListNode *node = new ListNode(p.getX(), p.getY());
+    ListNode* node = new ListNode(p.getX(), p.getY());
     if (isEmpty())
         first = node;
     else {
@@ -41,7 +47,7 @@ void List::deleteFirst()
 {
     if (first == nullptr)
         return;
-    ListNode *old = first;
+    ListNode* old = first;
     if (first->next == nullptr)
         last = nullptr;
     first = first->next;
@@ -52,7 +58,7 @@ void List::deleteLast()
 {
     if (first == nullptr)
         return;
-    ListNode *old = last;
+    ListNode* old = last;
     if (first->next == nullptr)
         first = nullptr;
     else
@@ -74,6 +80,6 @@ bool List::isEmpty() const
 
 void List::printDaList() const
 {
-    for (ListNode *n = first; n != nullptr; n = n->next)
+    for (ListNode* n = first; n != nullptr; n = n->next)
         n->data.printDaPoint();
 }

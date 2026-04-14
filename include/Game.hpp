@@ -30,12 +30,12 @@ public:
     Game(const Game&)            = delete;
     Game& operator=(const Game&) = delete;
 
-    int          getBorder()    const { return border; }
-    int          getScore()     const { return score;  }
-    const Point& getFruit()     const { return fruit;  }
-    char* const* grid()         const { return A;      }
-    const Point& getHead()      const;
-    char         getLastMove()  const;
+    int          getBorder() const { return border; }
+    int          getScore() const { return score; }
+    const Point& getFruit() const { return fruit; }
+    char* const* grid() const { return A; }
+    const Point& getHead() const;
+    char         getLastMove() const;
 
     TickResult tick(char dir);
 };

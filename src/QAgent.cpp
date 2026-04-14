@@ -22,12 +22,13 @@ QAgent::QAgent(float epsilon) : epsilon_(epsilon)
 int QAgent::dirIndex(char dir)
 {
     switch (dir) {
-        case 'w': return 0;
-        case 's': return 1;
-        case 'a': return 2;
-        case 'd': return 3;
-        default:  assert(false && "dirIndex: invalid direction character");
-                  return 3; // unreachable; silences compiler warning
+    case 'w': return 0;
+    case 's': return 1;
+    case 'a': return 2;
+    case 'd': return 3;
+    default:
+        assert(false && "dirIndex: invalid direction character");
+        return 3; // unreachable; silences compiler warning
     }
 }
 
@@ -43,10 +44,10 @@ int QAgent::dirIndex(char dir)
 char QAgent::absoluteDir(char current, int relativeOffset)
 {
     static const char TABLE[4][3] = {
-        {'w', 'a', 'd'},  // facing w
-        {'s', 'd', 'a'},  // facing s
-        {'a', 's', 'w'},  // facing a
-        {'d', 'w', 's'},  // facing d
+        {'w', 'a', 'd'}, // facing w
+        {'s', 'd', 'a'}, // facing s
+        {'a', 's', 'w'}, // facing a
+        {'d', 'w', 's'}, // facing d
     };
     return TABLE[dirIndex(current)][relativeOffset];
 }
@@ -57,18 +58,34 @@ void QAgent::nextCell(int hx, int hy, char dir, int border, int& nx, int& ny)
 {
     const int field = border - 2;
     switch (dir) {
-        case 'w': nx = (hx - 2 + field) % field + 1; ny = hy;                             break;
-        case 's': nx = hx % field + 1;                ny = hy;                             break;
-        case 'a': nx = hx;                             ny = (hy - 2 + field) % field + 1; break;
-        case 'd': nx = hx;                             ny = hy % field + 1;                break;
-        default:  nx = hx;                             ny = hy;                             break;
+    case 'w':
+        nx = (hx - 2 + field) % field + 1;
+        ny = hy;
+        break;
+    case 's':
+        nx = hx % field + 1;
+        ny = hy;
+        break;
+    case 'a':
+        nx = hx;
+        ny = (hy - 2 + field) % field + 1;
+        break;
+    case 'd':
+        nx = hx;
+        ny = hy % field + 1;
+        break;
+    default:
+        nx = hx;
+        ny = hy;
+        break;
     }
 }
 
 bool QAgent::isDangerous(const Game& game, char dir)
 {
     const Point& head = game.getHead();
-    int nx, ny;
+    int          nx   = 0;
+    int          ny   = 0;
     nextCell(head.getX(), head.getY(), dir, game.getBorder(), nx, ny);
     // Only 'O' (body segment) is fatal; the border wraps rather than kills.
     return game.grid()[nx][ny] == 'O';
@@ -80,26 +97,21 @@ int QAgent::encodeState(const Game& game)
 {
     // If no move has been made yet, treat the direction as 'd' (rightward),
     // which matches the snake's initial horizontal orientation.
-    const char dir    = (game.getLastMove() != 0) ? game.getLastMove() : 'd';
+    const char   dir  = (game.getLastMove() != 0) ? game.getLastMove() : 'd';
     const Point& head = game.getHead();
     const Point& food = game.getFruit();
 
     const int dangerStraight = isDangerous(game, absoluteDir(dir, 0)) ? 1 : 0;
     const int dangerLeft     = isDangerous(game, absoluteDir(dir, 1)) ? 1 : 0;
     const int dangerRight    = isDangerous(game, absoluteDir(dir, 2)) ? 1 : 0;
-    const int foodUp         = (food.getX() < head.getX())            ? 1 : 0;
-    const int foodDown       = (food.getX() > head.getX())            ? 1 : 0;
-    const int foodLeft       = (food.getY() < head.getY())            ? 1 : 0;
-    const int foodRight      = (food.getY() > head.getY())            ? 1 : 0;
+    const int foodUp         = (food.getX() < head.getX()) ? 1 : 0;
+    const int foodDown       = (food.getX() > head.getX()) ? 1 : 0;
+    const int foodLeft       = (food.getY() < head.getY()) ? 1 : 0;
+    const int foodRight      = (food.getY() > head.getY()) ? 1 : 0;
 
-    const int idx = (dirIndex(dir)  << 7)
-                  | (dangerStraight << 6)
-                  | (dangerLeft     << 5)
-                  | (dangerRight    << 4)
-                  | (foodUp         << 3)
-                  | (foodDown       << 2)
-                  | (foodLeft       << 1)
-                  | (foodRight      << 0);
+    const int idx = (dirIndex(dir) << 7) | (dangerStraight << 6) | (dangerLeft << 5) |
+                    (dangerRight << 4) | (foodUp << 3) | (foodDown << 2) | (foodLeft << 1) |
+                    (foodRight << 0);
 
     assert(idx >= 0 && idx < NUM_STATES);
     return idx;
@@ -132,8 +144,7 @@ void QAgent::update(int state, int action, float reward, int nextState)
     assert(state >= 0 && state < NUM_STATES);
     assert(action >= 0 && action < NUM_ACTIONS);
     assert(nextState >= 0 && nextState < NUM_STATES);
-    const float maxNext =
-        *std::max_element(Q_[nextState], Q_[nextState] + NUM_ACTIONS);
+    const float maxNext = *std::max_element(Q_[nextState], Q_[nextState] + NUM_ACTIONS);
     Q_[state][action] += ALPHA * (reward + GAMMA * maxNext - Q_[state][action]);
 }
 
@@ -146,14 +157,14 @@ void QAgent::updateTerminal(int state, int action, float reward)
 
 void QAgent::decayEpsilon(float decayRate)
 {
-    epsilon_ = std::max(EPSILON_MIN, epsilon_ * (1.0f - decayRate));
+    epsilon_ = std::max(EPSILON_MIN, epsilon_ * (1.0F - decayRate));
 }
 
 float QAgent::computeDecayRate(int episodes)
 {
     assert(episodes > 0);
-    return 1.0f - std::pow(static_cast<double>(EPSILON_MIN),
-                           1.0 / static_cast<double>(episodes));
+    return static_cast<float>(
+        1.0 - std::pow(static_cast<double>(EPSILON_MIN), 1.0 / static_cast<double>(episodes)));
 }
 
 // ── Persistence ───────────────────────────────────────────────────────────────
@@ -161,7 +172,8 @@ float QAgent::computeDecayRate(int episodes)
 bool QAgent::save(const std::string& path) const
 {
     std::FILE* f = std::fopen(path.c_str(), "wb");
-    if (!f) return false;
+    if (!f)
+        return false;
     const bool ok = (std::fwrite(Q_, sizeof(Q_), 1, f) == 1);
     std::fclose(f);
     return ok;
@@ -170,7 +182,8 @@ bool QAgent::save(const std::string& path) const
 bool QAgent::load(const std::string& path)
 {
     std::FILE* f = std::fopen(path.c_str(), "rb");
-    if (!f) return false;
+    if (!f)
+        return false;
     const bool ok = (std::fread(Q_, sizeof(Q_), 1, f) == 1);
     std::fclose(f);
     return ok;

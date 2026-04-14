@@ -15,7 +15,7 @@ class AgentRenderer : public IRenderer {
 public:
     /// agent must outlive this object.
     explicit AgentRenderer(const QAgent& agent);
-    ~AgentRenderer() override = default;
+    ~AgentRenderer() override                      = default;
     AgentRenderer(const AgentRenderer&)            = delete;
     AgentRenderer& operator=(const AgentRenderer&) = delete;
 

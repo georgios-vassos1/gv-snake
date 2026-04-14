@@ -1,7 +1,7 @@
 #include "ShitList.hpp"
 
 /// Advance node pointer p forward n times, stopping early on nullptr.
-static ListNode* advanceN(ListNode *p, int n)
+static ListNode* advanceN(ListNode* p, int n)
 {
     for (int i = 0; i < n && p != nullptr; i++)
         p = p->next;
@@ -25,10 +25,22 @@ const List& ShitList::getDaShit() const
     return daShit;
 }
 
-void ShitList::setValidness(bool v) { validness = v; }
-bool ShitList::getValidness() const { return validness; }
-void ShitList::setLastMove(char m)  { lastMove = m; }
-char ShitList::getLastMove()  const { return lastMove; }
+void ShitList::setValidness(bool v)
+{
+    validness = v;
+}
+bool ShitList::getValidness() const
+{
+    return validness;
+}
+void ShitList::setLastMove(char m)
+{
+    lastMove = m;
+}
+char ShitList::getLastMove() const
+{
+    return lastMove;
+}
 
 /// Compute the position the head will occupy after one step in direction dir,
 /// wrapping at the playfield boundary.  Positions are 1-based within
@@ -39,11 +51,11 @@ Point ShitList::nextHead(char dir, int gridSize) const
     const int hx    = daShit.getFirst()->data.getX();
     const int hy    = daShit.getFirst()->data.getY();
     switch (dir) {
-        case 'w': return Point((hx - 2 + field) % field + 1, hy);
-        case 's': return Point( hx % field + 1,               hy);
-        case 'a': return Point(hx, (hy - 2 + field) % field + 1);
-        case 'd': return Point(hx,  hy % field + 1);
-        default:  return daShit.getFirst()->data; // unreachable
+    case 'w': return Point((hx - 2 + field) % field + 1, hy);
+    case 's': return Point(hx % field + 1, hy);
+    case 'a': return Point(hx, (hy - 2 + field) % field + 1);
+    case 'd': return Point(hx, hy % field + 1);
+    default: return daShit.getFirst()->data; // unreachable
     }
 }
 
@@ -52,14 +64,15 @@ Point ShitList::nextHead(char dir, int gridSize) const
 /// it will have moved away by the time the head arrives.
 bool ShitList::isFree(char dir, int gridSize)
 {
-    if (!daShit.getFirst()) return false;
+    if (!daShit.getFirst())
+        return false;
 
-    const Point next = nextHead(dir, gridSize);
-    ListNode *current = advanceN(daShit.getFirst(), 3);
+    const Point next    = nextHead(dir, gridSize);
+    ListNode*   current = advanceN(daShit.getFirst(), 3);
     while (current) {
-        if (current == daShit.getLast()) return true; // tail moves away; safe
-        if (current->data.getX() == next.getX() &&
-            current->data.getY() == next.getY())
+        if (current == daShit.getLast())
+            return true; // tail moves away; safe
+        if (current->data.getX() == next.getX() && current->data.getY() == next.getY())
             return false;
         current = current->next;
     }
@@ -70,9 +83,10 @@ bool ShitList::isFree(char dir, int gridSize)
 /// neck (the 2nd segment).  Used to reject a 180-degree reversal.
 bool ShitList::isFree(char dir, int gridSize, int /*type*/)
 {
-    if (!daShit.getFirst() || !daShit.getFirst()->next) return false;
+    if (!daShit.getFirst() || !daShit.getFirst()->next)
+        return false;
 
-    const Point next = nextHead(dir, gridSize);
+    const Point  next = nextHead(dir, gridSize);
     const Point& neck = daShit.getFirst()->next->data;
     return !(next.getX() == neck.getX() && next.getY() == neck.getY());
 }
@@ -97,10 +111,22 @@ void ShitList::move(char dir, int gridSize)
     validness = true;
 }
 
-void ShitList::moveDaShitUp   (int x) { move('w', x); }
-void ShitList::moveDaShitDown (int x) { move('s', x); }
-void ShitList::moveDaShitLeft (int y) { move('a', y); }
-void ShitList::moveDaShitRight(int y) { move('d', y); }
+void ShitList::moveDaShitUp(int x)
+{
+    move('w', x);
+}
+void ShitList::moveDaShitDown(int x)
+{
+    move('s', x);
+}
+void ShitList::moveDaShitLeft(int y)
+{
+    move('a', y);
+}
+void ShitList::moveDaShitRight(int y)
+{
+    move('d', y);
+}
 
 void ShitList::addPart(const Point& location)
 {

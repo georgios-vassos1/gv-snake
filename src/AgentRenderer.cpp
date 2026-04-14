@@ -15,9 +15,7 @@ static int maxIdleSteps(int border)
     return interior * interior * 2;
 }
 
-AgentRenderer::AgentRenderer(const QAgent& agent)
-    : agent_(agent), highScore_(loadHighScore())
-{}
+AgentRenderer::AgentRenderer(const QAgent& agent) : agent_(agent), highScore_(loadHighScore()) {}
 
 void AgentRenderer::draw(const Game& game, int episode, int bestScore) const
 {
@@ -30,16 +28,15 @@ void AgentRenderer::draw(const Game& game, int episode, int bestScore) const
             std::cout << A[i][j];
         std::cout << '\n';
     }
-    std::printf("Score: %d   Best: %d   Episode: %d\033[K\n",
-                game.getScore(), bestScore, episode);
+    std::printf("Score: %d   Best: %d   Episode: %d\033[K\n", game.getScore(), bestScore, episode);
     std::cout.flush();
 }
 
-void AgentRenderer::run(Game& seed)
+void AgentRenderer::run(Game& game)
 {
-    const int border = seed.getBorder();
+    const int border = game.getBorder();
 
-    int episode  = 0;
+    int episode   = 0;
     int bestScore = highScore_;
 
     while (true) {

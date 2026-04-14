@@ -1,7 +1,6 @@
 #include "Game.hpp"
 #include <cassert>
 #include <cstdlib>
-#include <ctime>
 
 const int  Game::INITIAL_LENGTH = 10;
 const char Game::BORDER_CHAR    = '*';
@@ -10,8 +9,7 @@ const char Game::BODY_CHAR      = 'O';
 const char Game::FRUIT_CHAR     = 'X';
 const char Game::EMPTY_CHAR     = ' ';
 
-Game::Game(int b)
-    : border(b), score(0), A(nullptr)
+Game::Game(int b) : border(b), score(0), A(nullptr)
 {
     createA();
     for (int i = 0; i < INITIAL_LENGTH; i++)
@@ -54,8 +52,8 @@ void Game::buildGrid(bool placeFruit)
     // Pass 1 — O(border²): borders and empty interior.
     for (int i = 0; i < border; i++)
         for (int j = 0; j < border; j++)
-            A[i][j] = (i == 0 || i == border - 1 || j == 0 || j == border - 1)
-                      ? BORDER_CHAR : EMPTY_CHAR;
+            A[i][j] =
+                (i == 0 || i == border - 1 || j == 0 || j == border - 1) ? BORDER_CHAR : EMPTY_CHAR;
 
     // Pass 2 — O(n): overlay the snake.
     for (ListNode* n = daCrap.getDaShit().getFirst(); n != nullptr; n = n->next)
@@ -81,10 +79,14 @@ char Game::getLastMove() const
 
 TickResult Game::tick(char dir)
 {
-    if      (dir == 'w') daCrap.moveDaShitUp(border);
-    else if (dir == 's') daCrap.moveDaShitDown(border);
-    else if (dir == 'a') daCrap.moveDaShitLeft(border);
-    else if (dir == 'd') daCrap.moveDaShitRight(border);
+    if (dir == 'w')
+        daCrap.moveDaShitUp(border);
+    else if (dir == 's')
+        daCrap.moveDaShitDown(border);
+    else if (dir == 'a')
+        daCrap.moveDaShitLeft(border);
+    else if (dir == 'd')
+        daCrap.moveDaShitRight(border);
 
     if (!daCrap.getValidness())
         return TickResult::GameOver;
@@ -93,10 +95,14 @@ TickResult Game::tick(char dir)
     if (head->data.getX() == fruit.getX() && head->data.getY() == fruit.getY()) {
         // Grow: append a segment behind the head's previous position.
         Point growPt;
-        if      (dir == 'w') growPt = Point(head->data.getX() + 1, head->data.getY());
-        else if (dir == 's') growPt = Point(head->data.getX() - 1, head->data.getY());
-        else if (dir == 'a') growPt = Point(head->data.getX(),     head->data.getY() + 1);
-        else                 growPt = Point(head->data.getX(),     head->data.getY() - 1);
+        if (dir == 'w')
+            growPt = Point(head->data.getX() + 1, head->data.getY());
+        else if (dir == 's')
+            growPt = Point(head->data.getX() - 1, head->data.getY());
+        else if (dir == 'a')
+            growPt = Point(head->data.getX(), head->data.getY() + 1);
+        else
+            growPt = Point(head->data.getX(), head->data.getY() - 1);
         daCrap.addPart(growPt);
         buildGrid(true);
         ++score;

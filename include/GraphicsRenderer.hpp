@@ -13,10 +13,10 @@ class GraphicsRenderer : public IRenderer {
     static const int CELL_SIZE = 12;
     static const int TICK_MS   = 70;
 
-    SDL_Window*    window;
-    SDL_Renderer*  sdlRenderer;
-    int            highScore;
-    const QAgent*  agent_;     ///< nullptr → human play; non-null → agent play
+    SDL_Window*   window;
+    SDL_Renderer* sdlRenderer;
+    int           highScore;
+    const QAgent* agent_; ///< nullptr → human play; non-null → agent play
 
     void draw(const Game& game, int episode = 0) const;
     void runHuman(Game& game);
@@ -24,7 +24,7 @@ class GraphicsRenderer : public IRenderer {
 
 public:
     explicit GraphicsRenderer(int border);
-    ~GraphicsRenderer();
+    ~GraphicsRenderer() override;
     GraphicsRenderer(const GraphicsRenderer&)            = delete;
     GraphicsRenderer& operator=(const GraphicsRenderer&) = delete;
 

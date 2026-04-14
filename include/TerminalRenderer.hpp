@@ -11,11 +11,11 @@ class TerminalRenderer : public IRenderer {
     int             highScore;
 
     static void* inputLoop(void* self);
-    void draw(const Game& game) const;
+    void         draw(const Game& game) const;
 
 public:
     TerminalRenderer();
-    ~TerminalRenderer();
+    ~TerminalRenderer() override;
     TerminalRenderer(const TerminalRenderer&)            = delete;
     TerminalRenderer& operator=(const TerminalRenderer&) = delete;
 

@@ -1,15 +1,14 @@
 #include "TerminalRenderer.hpp"
 #include "HighScore.hpp"
 #include "mygetch.hpp"
-#include <iostream>
 #include <cstdio>
-#include <unistd.h>
+#include <iostream>
 #include <pthread.h>
+#include <unistd.h>
 
 static const int TICK_US = 70000;
 
-TerminalRenderer::TerminalRenderer()
-    : inputThread(0), currentMove(0), highScore(loadHighScore())
+TerminalRenderer::TerminalRenderer() : inputThread(0), currentMove(0), highScore(loadHighScore())
 {
     pthread_mutex_init(&mutex, nullptr);
 }
@@ -35,8 +34,8 @@ void* TerminalRenderer::inputLoop(void* self)
 
 void TerminalRenderer::draw(const Game& game) const
 {
-    const int b      = game.getBorder();
-    char* const* A   = game.grid();
+    const int    b = game.getBorder();
+    char* const* A = game.grid();
     std::cout << "\033[H";
     for (int i = 0; i < b; i++) {
         for (int j = 0; j < b; j++)

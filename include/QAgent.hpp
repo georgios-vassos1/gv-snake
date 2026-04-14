@@ -24,17 +24,17 @@ class QAgent {
 public:
     static constexpr int   NUM_STATES   = 512;
     static constexpr int   NUM_ACTIONS  = 4;    ///< w, s, a, d
-    static constexpr float ALPHA        = 0.1f; ///< learning rate
-    static constexpr float GAMMA        = 0.9f; ///< discount factor
-    static constexpr float EPSILON_MIN  = 0.01f;
-    static constexpr float REWARD_FRUIT = 10.0f;
-    static constexpr float REWARD_DEATH = -10.0f;
-    static constexpr float REWARD_STEP  = -0.01f; ///< small step penalty
+    static constexpr float ALPHA        = 0.1F; ///< learning rate
+    static constexpr float GAMMA        = 0.9F; ///< discount factor
+    static constexpr float EPSILON_MIN  = 0.01F;
+    static constexpr float REWARD_FRUIT = 10.0F;
+    static constexpr float REWARD_DEATH = -10.0F;
+    static constexpr float REWARD_STEP  = -0.01F; ///< small step penalty
 
     /// Maps action index → direction character: {0='w', 1='s', 2='a', 3='d'}.
     static const char ACTIONS[NUM_ACTIONS];
 
-    explicit QAgent(float epsilon = 1.0f);
+    explicit QAgent(float epsilon = 1.0F);
 
     // ── State encoding ────────────────────────────────────────────────────────
 
@@ -60,7 +60,7 @@ public:
     void updateTerminal(int state, int action, float reward);
 
     /// Multiply epsilon by (1 - decayRate), clamped to EPSILON_MIN.
-    void decayEpsilon(float decayRate);
+    void  decayEpsilon(float decayRate);
     float getEpsilon() const { return epsilon_; }
 
     /// Compute the per-episode decay rate so that epsilon reaches EPSILON_MIN
@@ -84,15 +84,14 @@ private:
     float epsilon_;
 
     /// Map direction character to 0-based index.
-    static int  dirIndex(char dir);
+    static int dirIndex(char dir);
 
     /// Given the current absolute direction and a relative offset
     /// (0 = straight, 1 = left, 2 = right), return the absolute direction.
     static char absoluteDir(char current, int relativeOffset);
 
     /// Compute the wrapped next cell when moving in 'dir' from (hx, hy).
-    static void nextCell(int hx, int hy, char dir, int border,
-                         int& nx, int& ny);
+    static void nextCell(int hx, int hy, char dir, int border, int& nx, int& ny);
 
     /// Return true if the next cell in 'dir' holds a body segment.
     static bool isDangerous(const Game& game, char dir);

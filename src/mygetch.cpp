@@ -1,6 +1,6 @@
 #include "mygetch.hpp"
-#include <termios.h>
 #include <stdio.h>
+#include <termios.h>
 
 static struct termios saved;
 
@@ -8,7 +8,7 @@ void initGetch()
 {
     struct termios raw;
     tcgetattr(0, &saved);
-    raw          = saved;
+    raw = saved;
     raw.c_lflag &= ~(ICANON | ECHO);
     tcsetattr(0, TCSANOW, &raw);
 }

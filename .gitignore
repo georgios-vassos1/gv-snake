@@ -30,6 +30,16 @@ snake
 .AppleDouble
 .LSOverride
 
+# ── RL agent artefacts ────────────────────────────────────────────────────────
+qtable.bin
+*.qtable
+
+# ── High score persistence ────────────────────────────────────────────────────
+snake_highscore.txt
+
+# ── Tooling caches ────────────────────────────────────────────────────────────
+.cache/
+
 # ── IDE / editor ──────────────────────────────────────────────────────────────
 .idea/
 .vscode/

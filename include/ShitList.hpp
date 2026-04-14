@@ -3,8 +3,7 @@
 
 #include "List.hpp"
 
-class ShitList
-{
+class ShitList {
     List daShit;
     char lastMove;
     bool validness;
@@ -22,13 +21,13 @@ public:
     bool isFree(char, int, int);
 
     void setLastMove(char);
-    char getLastMove()  const;
+    char getLastMove() const;
     void setValidness(bool);
     bool getValidness() const;
 
-    void moveDaShitUp   (int);
-    void moveDaShitDown (int);
-    void moveDaShitLeft (int);
+    void moveDaShitUp(int);
+    void moveDaShitDown(int);
+    void moveDaShitLeft(int);
     void moveDaShitRight(int);
 
     void addPart(const Point&);

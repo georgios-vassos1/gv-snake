@@ -1,6 +1,5 @@
 #include "AgentRenderer.hpp"
 #include "Game.hpp"
-#include "IRenderer.hpp"
 #include "QAgent.hpp"
 #include "TerminalRenderer.hpp"
 #include "mygetch.hpp"
@@ -37,17 +36,16 @@ static int maxIdleSteps(int border)
 
 static void runTraining(int episodes, const std::string& qtablePath)
 {
-    std::printf("Training: %d episodes on %dx%d grid\n",
-                episodes, TRAIN_GRID_SIZE, TRAIN_GRID_SIZE);
-    std::printf("  %-28s  %6s  %6s  %8s\n",
-                "Progress", "AvgScr", "Best", "Epsilon");
+    std::printf("Training: %d episodes on %dx%d grid\n", episodes, TRAIN_GRID_SIZE,
+                TRAIN_GRID_SIZE);
+    std::printf("  %-28s  %6s  %6s  %8s\n", "Progress", "AvgScr", "Best", "Epsilon");
     std::fflush(stdout);
 
-    QAgent agent(1.0f);
+    QAgent      agent(1.0F);
     const float decayRate = QAgent::computeDecayRate(episodes);
 
-    int   bestScore  = 0;
-    long  scoreAccum = 0;
+    int       bestScore   = 0;
+    long      scoreAccum  = 0;
     const int reportEvery = std::max(1, episodes / 20); // 20 progress lines
 
     for (int ep = 1; ep <= episodes; ++ep) {
@@ -66,9 +64,8 @@ static void runTraining(int episodes, const std::string& qtablePath)
                 break;
             }
 
-            const float reward = (result == TickResult::AteFruit)
-                                  ? QAgent::REWARD_FRUIT
-                                  : QAgent::REWARD_STEP;
+            const float reward =
+                (result == TickResult::AteFruit) ? QAgent::REWARD_FRUIT : QAgent::REWARD_STEP;
 
             if (result == TickResult::AteFruit)
                 idleSteps = 0;
@@ -79,20 +76,22 @@ static void runTraining(int episodes, const std::string& qtablePath)
             agent.update(state, action, reward, nextState);
             state = nextState;
 
-            if (idleSteps >= maxIdleSteps(TRAIN_GRID_SIZE)) break;
+            if (idleSteps >= maxIdleSteps(TRAIN_GRID_SIZE))
+                break;
         }
 
         const int score = game.getScore();
         scoreAccum += score;
-        if (score > bestScore) bestScore = score;
+        if (score > bestScore)
+            bestScore = score;
 
         agent.decayEpsilon(decayRate);
 
         if (ep % reportEvery == 0) {
             const float avg = static_cast<float>(scoreAccum) / static_cast<float>(reportEvery);
-            std::printf("  Episode %*d/%d | avg: %6.2f | best: %4d | ε: %.4f\n",
-                        static_cast<int>(std::to_string(episodes).size()),
-                        ep, episodes, avg, bestScore, agent.getEpsilon());
+            std::printf("  Episode %*d/%d | avg: %6.2F | best: %4d | ε: %.4F\n",
+                        static_cast<int>(std::to_string(episodes).size()), ep, episodes, avg,
+                        bestScore, agent.getEpsilon());
             std::fflush(stdout);
             scoreAccum = 0;
         }
@@ -101,8 +100,7 @@ static void runTraining(int episodes, const std::string& qtablePath)
     if (agent.save(qtablePath)) {
         std::printf("Q-table saved to %s\n", qtablePath.c_str());
     } else {
-        std::fprintf(stderr, "ERROR: failed to save Q-table to %s\n",
-                     qtablePath.c_str());
+        std::fprintf(stderr, "ERROR: failed to save Q-table to %s\n", qtablePath.c_str());
     }
 }
 
@@ -110,12 +108,12 @@ static void runTraining(int episodes, const std::string& qtablePath)
 
 static void runPlay(const std::string& qtablePath, bool useGraphics)
 {
-    QAgent agent(0.0f); // pure greedy — no exploration
+    QAgent agent(0.0F); // pure greedy — no exploration
     if (!agent.load(qtablePath)) {
         std::fprintf(stderr,
-            "ERROR: could not load Q-table from '%s'.\n"
-            "Run with --train first to generate it.\n",
-            qtablePath.c_str());
+                     "ERROR: could not load Q-table from '%s'.\n"
+                     "Run with --train first to generate it.\n",
+                     qtablePath.c_str());
         std::exit(EXIT_FAILURE);
     }
 
@@ -127,9 +125,8 @@ static void runPlay(const std::string& qtablePath, bool useGraphics)
         renderer.setAgent(agent);
         renderer.run(game);
 #else
-        std::fprintf(stderr,
-            "Graphics mode not available (SDL2 not found at build time).\n"
-            "Run without --graphics to use terminal mode.\n");
+        std::fprintf(stderr, "Graphics mode not available (SDL2 not found at build time).\n"
+                             "Run without --graphics to use terminal mode.\n");
         std::exit(EXIT_FAILURE);
 #endif
     } else {
@@ -148,15 +145,15 @@ static void runPlay(const std::string& qtablePath, bool useGraphics)
 static void printUsage(const char* argv0)
 {
     std::fprintf(stderr,
-        "Usage:\n"
-        "  %s                                 human play (terminal)\n"
-        "  %s --graphics                      human play (SDL2, if available)\n"
-        "  %s --train [N]                     train for N episodes (default 10000)\n"
-        "  %s --train [N] --qtable <file>     save Q-table to <file>\n"
-        "  %s --play                          run trained agent (terminal)\n"
-        "  %s --play --graphics               run trained agent (SDL2)\n"
-        "  %s --play [--graphics] --qtable <file>  load Q-table from <file>\n",
-        argv0, argv0, argv0, argv0, argv0, argv0, argv0);
+                 "Usage:\n"
+                 "  %s                                 human play (terminal)\n"
+                 "  %s --graphics                      human play (SDL2, if available)\n"
+                 "  %s --train [N]                     train for N episodes (default 10000)\n"
+                 "  %s --train [N] --qtable <file>     save Q-table to <file>\n"
+                 "  %s --play                          run trained agent (terminal)\n"
+                 "  %s --play --graphics               run trained agent (SDL2)\n"
+                 "  %s --play [--graphics] --qtable <file>  load Q-table from <file>\n",
+                 argv0, argv0, argv0, argv0, argv0, argv0, argv0);
 }
 
 // ── Entry point ───────────────────────────────────────────────────────────────
@@ -220,9 +217,8 @@ int main(int argc, char* argv[])
         GraphicsRenderer renderer(GRID_SIZE);
         renderer.run(game);
 #else
-        std::fprintf(stderr,
-            "Graphics mode not available (SDL2 not found at build time).\n"
-            "Run without --graphics to use terminal mode.\n");
+        std::fprintf(stderr, "Graphics mode not available (SDL2 not found at build time).\n"
+                             "Run without --graphics to use terminal mode.\n");
         return EXIT_FAILURE;
 #endif
     } else {

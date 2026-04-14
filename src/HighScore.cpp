@@ -7,7 +7,8 @@ static const char* scorePath()
 {
     static char path[512];
     const char* home = std::getenv("HOME");
-    if (!home) home = ".";
+    if (!home)
+        home = ".";
     std::snprintf(path, sizeof(path), "%s/.snake_score", home);
     return path;
 }
@@ -15,7 +16,8 @@ static const char* scorePath()
 int loadHighScore()
 {
     std::FILE* f = std::fopen(scorePath(), "r");
-    if (!f) return 0;
+    if (!f)
+        return 0;
     int val = 0;
     std::fscanf(f, "%d", &val);
     std::fclose(f);
@@ -25,7 +27,8 @@ int loadHighScore()
 void saveHighScore(int score)
 {
     std::FILE* f = std::fopen(scorePath(), "w");
-    if (!f) return;
+    if (!f)
+        return;
     std::fprintf(f, "%d\n", score);
     std::fclose(f);
 }

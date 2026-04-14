@@ -5,7 +5,7 @@
 
 class IRenderer {
 public:
-    virtual ~IRenderer() = default;
+    virtual ~IRenderer()         = default;
     virtual void run(Game& game) = 0;
 };
 
