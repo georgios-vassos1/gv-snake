@@ -50,8 +50,7 @@ static void test_encodeState_range()
     std::printf("\n-- Test 1: encodeState range --\n");
     bool allInRange = true;
     for (int trial = 0; trial < 200; ++trial) {
-        Game game(20);
-        // Take a few random steps to vary the state.
+        Game       game(20);
         const char dirs[] = {'w', 's', 'a', 'd'};
         for (int step = 0; step < 10; ++step) {
             const char d = dirs[std::rand() % 4];
@@ -69,29 +68,44 @@ static void test_encodeState_range()
         PASS("encodeState always in [0, NUM_STATES)");
 }
 
-// ── Test 2: encodeState is deterministic ─────────────────────────────────────
+// ── Test 2: encodeState food direction bits match actual positions ────────────
+// Extracts bits [3:0] from the encoded state and independently computes what
+// they should be from game.getHead() and game.getFruit().  If the bit packing
+// or the up/down/left/right predicates are wrong this test will catch it.
 
-static void test_encodeState_deterministic()
+static void test_encodeState_food_bits()
 {
-    std::printf("\n-- Test 2: encodeState determinism --\n");
-    // Construct two fresh games with the same seed by comparing same initial state.
-    Game g1(20);
-    // Tick both games identically.
-    const char script[] = {'d', 'd', 's', 's', 'a'};
-    bool       g1Dead   = false;
-    for (const char d : script) {
-        if (g1.tick(d) == TickResult::GameOver) {
-            g1Dead = true;
+    std::printf("\n-- Test 2: encodeState food direction bits --\n");
+    bool ok = true;
+    for (int trial = 0; trial < 100; ++trial) {
+        Game         game(20);
+        const int    encoded  = QAgent::encodeState(game);
+        const Point& head     = game.getHead();
+        const Point& food     = game.getFruit();
+
+        // bits [3:0] in the encoding:
+        //   bit 3 = foodUp    = fruit.x < head.x
+        //   bit 2 = foodDown  = fruit.x > head.x
+        //   bit 1 = foodLeft  = fruit.y < head.y
+        //   bit 0 = foodRight = fruit.y > head.y
+        const int actualBits   = encoded & 0xF;
+        const int expUp        = (food.getX() < head.getX()) ? 1 : 0;
+        const int expDown      = (food.getX() > head.getX()) ? 1 : 0;
+        const int expLeft      = (food.getY() < head.getY()) ? 1 : 0;
+        const int expRight     = (food.getY() > head.getY()) ? 1 : 0;
+        const int expectedBits = (expUp << 3) | (expDown << 2) | (expLeft << 1) | expRight;
+
+        if (actualBits != expectedBits) {
+            FAIL("food bits mismatch (trial %d): expected 0x%X, got 0x%X "
+                 "(head=(%d,%d) fruit=(%d,%d))",
+                 trial, expectedBits, actualBits,
+                 head.getX(), head.getY(), food.getX(), food.getY());
+            ok = false;
             break;
         }
     }
-    if (g1Dead) {
-        PASS("encodeState determinism (snake died in setup — skipped)");
-        return;
-    }
-    const int idx1 = QAgent::encodeState(g1);
-    const int idx2 = QAgent::encodeState(g1); // same object, same state
-    EXPECT_EQ(idx1, idx2, "encodeState returns same value for same game state");
+    if (ok)
+        PASS("encodeState food direction bits match actual head/fruit positions");
 }
 
 // ── Test 3: greedyAction returns the argmax of Q values ──────────────────────
@@ -99,20 +113,13 @@ static void test_encodeState_deterministic()
 static void test_greedyAction()
 {
     std::printf("\n-- Test 3: greedyAction is argmax --\n");
-    // Manually plant Q values and verify greedyAction picks the largest.
-    // We test by running update() to inject known values, then checking.
     QAgent agent(0.0F);
 
-    // Force Q[state=0][action=2] to be the highest via multiple updates.
-    // Q[0][2] += ALPHA * (large_reward + 0 - 0) per update.
-    // After enough updates it should dominate.
-    const int target_state  = 0;
-    const int target_action = 2;
+    // Flood Q[0][2] with a large reward so it dominates all other actions.
     for (int i = 0; i < 100; ++i)
-        agent.update(target_state, target_action, 1000.0F, 0);
+        agent.update(0, 2, 1000.0F, 0);
 
-    EXPECT_EQ(agent.greedyAction(target_state), target_action,
-              "greedyAction selects the highest-Q action");
+    EXPECT_EQ(agent.greedyAction(0), 2, "greedyAction selects the highest-Q action");
 }
 
 // ── Test 4: Q-update math ─────────────────────────────────────────────────────
@@ -125,16 +132,14 @@ static void test_q_update_math()
     // Initial Q is all zeros.
     // update(s=0, a=0, reward=10, s'=0):
     //   Q[0][0] += 0.1 * (10 + 0.9 * max(Q[0]) - Q[0][0])
-    //            = 0.1 * (10 + 0.9 * 0 - 0)
-    //            = 1.0
+    //            = 0.1 * (10 + 0) = 1.0
     agent.update(0, 0, 10.0F, 0);
     EXPECT_NEAR(agent.getQ(0, 0), 1.0F, 1e-5F, "first Q-update: Q[0][0] = 1.0");
 
     // Second update (s=0, a=0, reward=0, s'=0):
-    //   Q[0][0] += 0.1 * (0 + 0.9 * 1.0 - 1.0)
-    //            = 0.1 * (0.9 - 1.0)
-    //            = 0.1 * (-0.1) = -0.01
-    //   New Q[0][0] = 1.0 - 0.01 = 0.99
+    //   max(Q[0]) = 1.0 (only Q[0][0] is non-zero)
+    //   Q[0][0] += 0.1 * (0 + 0.9*1.0 - 1.0) = 0.1 * (-0.1) = -0.01
+    //   New Q[0][0] = 0.99
     agent.update(0, 0, 0.0F, 0);
     EXPECT_NEAR(agent.getQ(0, 0), 0.99F, 1e-5F, "second Q-update: Q[0][0] = 0.99");
 }
@@ -147,7 +152,7 @@ static void test_updateTerminal_math()
     QAgent agent(0.0F);
 
     // updateTerminal(s=1, a=0, reward=-10):
-    //   Q[1][0] += 0.1 * (-10 - 0)  = -1.0
+    //   Q[1][0] += 0.1 * (-10 - 0) = -1.0
     agent.updateTerminal(1, 0, -10.0F);
     EXPECT_NEAR(agent.getQ(1, 0), -1.0F, 1e-5F,
                 "terminal Q-update: Q[1][0] = -1.0 (no successor term)");
@@ -160,7 +165,6 @@ static void test_epsilon_decay()
     std::printf("\n-- Test 5: epsilon decay --\n");
     QAgent agent(1.0F);
 
-    // After N calls with a carefully computed rate, epsilon should reach MIN.
     const int   N    = 1000;
     const float rate = QAgent::computeDecayRate(N);
     for (int i = 0; i < N; ++i)
@@ -169,9 +173,10 @@ static void test_epsilon_decay()
     EXPECT_NEAR(agent.getEpsilon(), QAgent::EPSILON_MIN, 1e-4F,
                 "epsilon reaches EPSILON_MIN after N decays");
 
-    // Further decay should stay clamped at EPSILON_MIN.
+    // Further decay must stay clamped.
     agent.decayEpsilon(0.5F);
-    EXPECT_NEAR(agent.getEpsilon(), QAgent::EPSILON_MIN, 1e-6F, "epsilon clamped at EPSILON_MIN");
+    EXPECT_NEAR(agent.getEpsilon(), QAgent::EPSILON_MIN, 1e-6F,
+                "epsilon clamped at EPSILON_MIN");
 }
 
 // ── Test 6: save / load round-trip ───────────────────────────────────────────
@@ -182,7 +187,6 @@ static void test_save_load()
     const std::string path = "/tmp/qagent_test.bin";
 
     QAgent a(0.0F);
-    // Plant a known value.
     a.update(42, 3, 99.0F, 0);
     const float before = a.getQ(42, 3);
 
@@ -192,26 +196,34 @@ static void test_save_load()
     EXPECT_TRUE(b.load(path), "load() returns true");
     EXPECT_NEAR(b.getQ(42, 3), before, 1e-6F, "loaded Q[42][3] matches saved value");
 
-    // Non-existent file returns false.
     QAgent c(0.0F);
     EXPECT_TRUE(!c.load("/tmp/no_such_file_xyz.bin"), "load() returns false for missing file");
+
     std::remove(path.c_str());
 }
 
-// ── Test 7: actions array covers all four directions ─────────────────────────
+// ── Test 7: selectAction with epsilon=0 is always greedy ─────────────────────
+// With epsilon=0, selectAction must return the same action as greedyAction on
+// every call.  A broken epsilon-greedy implementation (e.g. wrong comparison
+// sign or missing clamp) would occasionally return a random action here.
 
-static void test_actions_array()
+static void test_selectAction_epsilon0_is_greedy()
 {
-    std::printf("\n-- Test 7: ACTIONS array --\n");
-    const char expected[] = {'w', 's', 'a', 'd'};
-    bool       ok         = true;
-    for (int i = 0; i < QAgent::NUM_ACTIONS; ++i) {
-        if (QAgent::ACTIONS[i] != expected[i]) {
-            ok = false;
+    std::printf("\n-- Test 7: selectAction(epsilon=0) is purely greedy --\n");
+    QAgent agent(0.0F);
+
+    // Plant a clear winner so greedyAction is unambiguous.
+    agent.update(0, 2, 100.0F, 0);
+    const int expected = agent.greedyAction(0);
+
+    bool allGreedy = true;
+    for (int i = 0; i < 200; ++i) {
+        if (agent.selectAction(0) != expected) {
+            allGreedy = false;
             break;
         }
     }
-    EXPECT_TRUE(ok, "ACTIONS = {w, s, a, d}");
+    EXPECT_TRUE(allGreedy, "selectAction(epsilon=0) always returns greedyAction result");
 }
 
 // ── Test 8: integration — training improves score ────────────────────────────
@@ -220,7 +232,6 @@ static void test_training_improves_score()
 {
     std::printf("\n-- Test 8: training improves score --\n");
 
-    // Evaluate average score over 'evalEpisodes' episodes.
     auto evalAgent = [](const QAgent& agent, int evalEpisodes) -> float {
         long total = 0;
         for (int ep = 0; ep < evalEpisodes; ++ep) {
@@ -243,11 +254,9 @@ static void test_training_improves_score()
         return static_cast<float>(total) / static_cast<float>(evalEpisodes);
     };
 
-    // Untrained agent baseline (all Q = 0 → action 0 always).
     const QAgent untrained(0.0F);
     const float  baselineScore = evalAgent(untrained, 50);
 
-    // Train for 5000 episodes.
     QAgent      agent(1.0F);
     const int   trainEpisodes = 5000;
     const float decayRate     = QAgent::computeDecayRate(trainEpisodes);
@@ -299,13 +308,13 @@ static void test_training_improves_score()
 int main()
 {
     test_encodeState_range();
-    test_encodeState_deterministic();
+    test_encodeState_food_bits();
     test_greedyAction();
     test_q_update_math();
     test_updateTerminal_math();
     test_epsilon_decay();
     test_save_load();
-    test_actions_array();
+    test_selectAction_epsilon0_is_greedy();
     test_training_improves_score();
 
     std::printf("\n%s  (%d failure(s))\n", failures == 0 ? "ALL PASSED" : "SOME FAILED", failures);
