@@ -16,6 +16,8 @@ add_library(snake_core STATIC
     src/HighScore.cpp
     src/TerminalRenderer.cpp
     src/mygetch.cpp
+    src/QAgent.cpp
+    src/AgentRenderer.cpp
 )
 target_include_directories(snake_core PUBLIC include)
 target_compile_options(snake_core PRIVATE -Wall -Wextra -O2)
@@ -52,3 +54,7 @@ add_test(NAME list_test COMMAND list_test)
 add_executable(score_test tests/score_test.cpp)
 target_link_libraries(score_test PRIVATE snake_core)
 add_test(NAME score_test COMMAND score_test)
+
+add_executable(qagent_test tests/qagent_test.cpp)
+target_link_libraries(qagent_test PRIVATE snake_core)
+add_test(NAME qagent_test COMMAND qagent_test)

@@ -2,6 +2,7 @@
 
 #include "GraphicsRenderer.hpp"
 #include "HighScore.hpp"
+#include "QAgent.hpp"
 #include <cstdio>
 
 // Colours (R, G, B, A)
@@ -12,7 +13,8 @@ static const SDL_Color COL_BODY   = { 30, 130,  30, 255};
 static const SDL_Color COL_FRUIT  = {220,  50,  50, 255};
 
 GraphicsRenderer::GraphicsRenderer(int border)
-    : window(nullptr), sdlRenderer(nullptr), highScore(loadHighScore())
+    : window(nullptr), sdlRenderer(nullptr), highScore(loadHighScore()),
+      agent_(nullptr)
 {
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         std::fprintf(stderr, "SDL_Init error: %s\n", SDL_GetError());
@@ -44,7 +46,7 @@ GraphicsRenderer::~GraphicsRenderer()
     SDL_Quit();
 }
 
-void GraphicsRenderer::draw(const Game& game) const
+void GraphicsRenderer::draw(const Game& game, int episode) const
 {
     if (!sdlRenderer) return;
 
@@ -71,25 +73,33 @@ void GraphicsRenderer::draw(const Game& game) const
         }
     }
     SDL_RenderPresent(sdlRenderer);
+
+    // Update window title with live stats.
+    char buf[64];
+    if (episode > 0) {
+        std::snprintf(buf, sizeof(buf), "Snake [AI]  Score: %d  Best: %d  Ep: %d",
+                      game.getScore(), highScore, episode);
+    } else {
+        std::snprintf(buf, sizeof(buf), "Snake  Score: %d  Best: %d",
+                      game.getScore(), highScore);
+    }
+    SDL_SetWindowTitle(window, buf);
 }
 
-void GraphicsRenderer::run(Game& game)
-{
-    if (!sdlRenderer) return;
+// ── Human play (original behaviour) ──────────────────────────────────────────
 
+void GraphicsRenderer::runHuman(Game& game)
+{
     draw(game);
 
-    char    currentDir = 0;
-    Uint32  lastTick   = SDL_GetTicks();
-    bool    running    = true;
+    char   currentDir = 0;
+    Uint32 lastTick   = SDL_GetTicks();
+    bool   running    = true;
 
     while (running) {
         SDL_Event e;
         while (SDL_PollEvent(&e)) {
-            if (e.type == SDL_QUIT) {
-                running = false;
-                break;
-            }
+            if (e.type == SDL_QUIT) { running = false; break; }
             if (e.type == SDL_KEYDOWN) {
                 switch (e.key.keysym.sym) {
                     case SDLK_w: case SDLK_UP:    currentDir = 'w'; break;
@@ -110,17 +120,12 @@ void GraphicsRenderer::run(Game& game)
             if (currentDir != 0 && currentDir != ' ') {
                 TickResult result = game.tick(currentDir);
                 draw(game);
-                {
-                    char buf[64];
-                    std::snprintf(buf, sizeof(buf), "Snake  Score: %d  Best: %d",
-                                  game.getScore(), highScore);
-                    SDL_SetWindowTitle(window, buf);
-                }
                 if (result == TickResult::GameOver) {
                     const int finalScore = game.getScore();
-                    if (finalScore > highScore)
+                    if (finalScore > highScore) {
+                        highScore = finalScore;
                         saveHighScore(finalScore);
-                    // Show game over — wait until window closed or Escape.
+                    }
                     SDL_Event qe;
                     while (SDL_WaitEvent(&qe)) {
                         if (qe.type == SDL_QUIT) break;
@@ -132,8 +137,87 @@ void GraphicsRenderer::run(Game& game)
             }
         }
 
-        SDL_Delay(8);  // ~120 fps poll rate
+        SDL_Delay(8);
     }
+}
+
+// ── Agent play ────────────────────────────────────────────────────────────────
+
+/// Maximum steps without eating fruit before the episode is restarted.
+static int maxIdleStepsGfx(int border)
+{
+    const int interior = border - 2;
+    return interior * interior * 2;
+}
+
+void GraphicsRenderer::runAgent(int border)
+{
+    int episode = 0;
+
+    while (true) {
+        ++episode;
+        Game   game(border);
+        Uint32 lastTick  = SDL_GetTicks();
+        int    idleSteps = 0;
+        bool   quit      = false;
+
+        draw(game, episode);
+
+        while (true) {
+            // Process window/keyboard events so the OS doesn't think we hung.
+            SDL_Event e;
+            while (SDL_PollEvent(&e)) {
+                if (e.type == SDL_QUIT) { quit = true; break; }
+                if (e.type == SDL_KEYDOWN &&
+                    e.key.keysym.sym == SDLK_ESCAPE) { quit = true; break; }
+            }
+            if (quit) break;
+
+            Uint32 now = SDL_GetTicks();
+            if (now - lastTick < static_cast<Uint32>(TICK_MS)) {
+                SDL_Delay(4);
+                continue;
+            }
+            lastTick = now;
+
+            const int  state  = QAgent::encodeState(game);
+            const int  action = agent_->greedyAction(state);
+            const char dir    = QAgent::ACTIONS[action];
+
+            const TickResult result = game.tick(dir);
+            draw(game, episode);
+
+            if (result == TickResult::AteFruit) {
+                idleSteps = 0;
+                const int score = game.getScore();
+                if (score > highScore) {
+                    highScore = score;
+                    saveHighScore(score);
+                }
+            } else {
+                ++idleSteps;
+            }
+
+            if (result == TickResult::GameOver ||
+                idleSteps >= maxIdleStepsGfx(border)) {
+                break; // restart episode
+            }
+        }
+
+        if (quit) break;
+    }
+}
+
+// ── Dispatch ──────────────────────────────────────────────────────────────────
+
+void GraphicsRenderer::run(Game& game)
+{
+    if (!sdlRenderer) return;
+
+    if (agent_)
+        runAgent(game.getBorder());
+    else
+        runHuman(game);
 }
 
 #endif // GRAPHICS_AVAILABLE

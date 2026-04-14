@@ -1,4 +1,5 @@
 #include "Game.hpp"
+#include <cassert>
 #include <cstdlib>
 #include <ctime>
 
@@ -12,7 +13,6 @@ const char Game::EMPTY_CHAR     = ' ';
 Game::Game(int b)
     : border(b), score(0), A(nullptr)
 {
-    std::srand(static_cast<unsigned int>(std::time(nullptr)));
     createA();
     for (int i = 0; i < INITIAL_LENGTH; i++)
         daCrap.addPart((border / 2) + i, border / 2);
@@ -66,6 +66,17 @@ void Game::buildGrid(bool placeFruit)
         placeNewFruit();
 
     A[fruit.getX()][fruit.getY()] = FRUIT_CHAR;
+}
+
+const Point& Game::getHead() const
+{
+    assert(daCrap.getDaShit().getFirst() != nullptr);
+    return daCrap.getDaShit().getFirst()->data;
+}
+
+char Game::getLastMove() const
+{
+    return daCrap.getLastMove();
 }
 
 TickResult Game::tick(char dir)

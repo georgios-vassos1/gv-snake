@@ -1,5 +1,4 @@
 #include "ShitList.hpp"
-#include <iostream>
 
 /// Advance node pointer p forward n times, stopping early on nullptr.
 static ListNode* advanceN(ListNode *p, int n)
@@ -84,7 +83,6 @@ void ShitList::move(char dir, int gridSize)
 {
     if (!isFree(dir, gridSize)) {
         validness = false;
-        std::cout << "\nGame Over! Press any key to exit.\n";
         return;
     }
     if (!isFree(dir, gridSize, 0)) {
