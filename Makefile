@@ -5,7 +5,7 @@ SNAKE      := $(BUILD_DIR)/snake
 QTABLE     := $(BUILD_DIR)/qtable.bin
 EPISODES   ?= 10000
 
-.PHONY: all configure build test train play play-graphics clean distclean help
+.PHONY: all configure build test train play play-graphics hamiltonian hamiltonian-graphics clean distclean help
 
 # ── Default target ────────────────────────────────────────────────────────────
 
@@ -45,6 +45,14 @@ play: build
 play-graphics: build
 	$(SNAKE) --play --graphics --qtable $(QTABLE)
 
+# ── Hamiltonian cycle agent ───────────────────────────────────────────────────
+
+hamiltonian: build
+	$(SNAKE) --hamiltonian
+
+hamiltonian-graphics: build
+	$(SNAKE) --hamiltonian --graphics
+
 # ── Human play ────────────────────────────────────────────────────────────────
 
 run: build
@@ -71,6 +79,8 @@ help:
 	@echo "  make train             train RL agent (EPISODES=10000 by default)"
 	@echo "  make play              watch trained agent in terminal"
 	@echo "  make play-graphics     watch trained agent in SDL2 window"
+	@echo "  make hamiltonian       watch Hamiltonian-cycle agent (terminal)"
+	@echo "  make hamiltonian-graphics  watch Hamiltonian-cycle agent (SDL2)"
 	@echo "  make run               play the game yourself (terminal)"
 	@echo "  make run-graphics      play the game yourself (SDL2)"
 	@echo "  make clean             remove compiled objects"

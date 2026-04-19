@@ -18,6 +18,7 @@ add_library(snake_core STATIC
     src/mygetch.cpp
     src/QAgent.cpp
     src/AgentRenderer.cpp
+    src/HamiltonianAgent.cpp
 )
 target_include_directories(snake_core PUBLIC include)
 target_compile_options(snake_core PRIVATE -Wall -Wextra -O2)

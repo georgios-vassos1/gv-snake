@@ -1,5 +1,7 @@
 #include "AgentRenderer.hpp"
 #include "Game.hpp"
+#include "HamiltonianAgent.hpp"
+#include "HighScore.hpp"
 #include "QAgent.hpp"
 #include "TerminalRenderer.hpp"
 #include "mygetch.hpp"
@@ -8,6 +10,7 @@
 #include <cstring>
 #include <ctime>
 #include <iostream>
+#include <unistd.h>
 
 #ifdef GRAPHICS_AVAILABLE
 #include "GraphicsRenderer.hpp"
@@ -84,6 +87,13 @@ static void runTraining(int episodes, const std::string& qtablePath)
                 const int distAfter = wrappedManhattan(game);
                 reward = QAgent::REWARD_STEP +
                          QAgent::REWARD_APPROACH * static_cast<float>(distBefore - distAfter);
+
+                // Space-awareness: penalise moves that shrink reachable area
+                // below a safety margin, training the agent to keep open space.
+                const Point& nh = game.getHead();
+                if (QAgent::floodFill(game, nh.getX(), nh.getY()) < 2 * game.getLength())
+                    reward += QAgent::REWARD_SPACE_PENALTY;
+
                 ++idleSteps;
             }
 
@@ -155,6 +165,78 @@ static void runPlay(const std::string& qtablePath, bool useGraphics)
     }
 }
 
+// ── Hamiltonian agent play ────────────────────────────────────────────────────
+
+/// Render one frame of the game state to the terminal (mirrors AgentRenderer).
+static void drawFrame(const Game& game, int episode, int bestScore)
+{
+    const int    b = game.getBorder();
+    char* const* A = game.grid();
+    std::cout << "\033[H";
+    for (int i = 0; i < b; ++i) {
+        for (int j = 0; j < b; ++j)
+            std::cout << A[i][j];
+        std::cout << '\n';
+    }
+    std::printf("Score: %d   Best: %d   Episode: %d\033[K\n", game.getScore(), bestScore, episode);
+    std::cout.flush();
+}
+
+static void runHamiltonian(bool useGraphics)
+{
+    HamiltonianAgent agent(GRID_SIZE);
+    Game             game(GRID_SIZE);
+
+    if (useGraphics) {
+#ifdef GRAPHICS_AVAILABLE
+        GraphicsRenderer renderer(GRID_SIZE);
+        renderer.setHamiltonianAgent(agent);
+        renderer.run(game);
+#else
+        std::fprintf(stderr, "Graphics mode not available (SDL2 not found at build time).\n"
+                             "Run without --graphics to use terminal mode.\n");
+        std::exit(EXIT_FAILURE);
+#endif
+    } else {
+        std::atexit(cleanup);
+        initGetch();
+        std::cout << "\033[2J\033[H\033[?25l";
+        std::cout.flush();
+
+        const int maxIdle = GRID_SIZE * GRID_SIZE * 2;
+        int       episode  = 0;
+        int       bestScore = loadHighScore();
+
+        while (true) {
+            ++episode;
+            Game epGame(GRID_SIZE);
+            int  idleSteps = 0;
+            drawFrame(epGame, episode, bestScore);
+
+            while (true) {
+                const char       dir    = agent.nextMove(epGame);
+                const TickResult result = epGame.tick(dir);
+                drawFrame(epGame, episode, bestScore);
+                usleep(100000); // ~10 fps
+
+                if (result == TickResult::AteFruit) {
+                    idleSteps       = 0;
+                    const int score = epGame.getScore();
+                    if (score > bestScore) {
+                        bestScore = score;
+                        saveHighScore(score);
+                    }
+                } else {
+                    ++idleSteps;
+                }
+
+                if (result == TickResult::GameOver || idleSteps >= maxIdle)
+                    break;
+            }
+        }
+    }
+}
+
 // ── Usage ─────────────────────────────────────────────────────────────────────
 
 static void printUsage(const char* argv0)
@@ -167,8 +249,10 @@ static void printUsage(const char* argv0)
                  "  %s --train [N] --qtable <file>     save Q-table to <file>\n"
                  "  %s --play                          run trained agent (terminal)\n"
                  "  %s --play --graphics               run trained agent (SDL2)\n"
-                 "  %s --play [--graphics] --qtable <file>  load Q-table from <file>\n",
-                 argv0, argv0, argv0, argv0, argv0, argv0, argv0);
+                 "  %s --play [--graphics] --qtable <file>  load Q-table from <file>\n"
+                 "  %s --hamiltonian                   Hamiltonian-cycle agent (terminal)\n"
+                 "  %s --hamiltonian --graphics        Hamiltonian-cycle agent (SDL2)\n",
+                 argv0, argv0, argv0, argv0, argv0, argv0, argv0, argv0, argv0);
 }
 
 // ── Entry point ───────────────────────────────────────────────────────────────
@@ -177,11 +261,12 @@ int main(int argc, char* argv[])
 {
     std::srand(static_cast<unsigned int>(std::time(nullptr)));
 
-    bool        useGraphics = false;
-    bool        doTrain     = false;
-    bool        doPlay      = false;
-    int         episodes    = 10000;
-    std::string qtablePath  = "qtable.bin";
+    bool        useGraphics   = false;
+    bool        doTrain       = false;
+    bool        doPlay        = false;
+    bool        doHamiltonian = false;
+    int         episodes      = 10000;
+    std::string qtablePath    = "qtable.bin";
 
     for (int i = 1; i < argc; ++i) {
         if (std::strcmp(argv[i], "--graphics") == 0) {
@@ -197,6 +282,8 @@ int main(int argc, char* argv[])
             }
         } else if (std::strcmp(argv[i], "--play") == 0) {
             doPlay = true;
+        } else if (std::strcmp(argv[i], "--hamiltonian") == 0) {
+            doHamiltonian = true;
         } else if (std::strcmp(argv[i], "--qtable") == 0) {
             if (i + 1 >= argc) {
                 std::fprintf(stderr, "ERROR: --qtable requires a path argument\n");
@@ -217,6 +304,11 @@ int main(int argc, char* argv[])
 
     if (doTrain) {
         runTraining(episodes, qtablePath);
+        return EXIT_SUCCESS;
+    }
+
+    if (doHamiltonian) {
+        runHamiltonian(useGraphics);
         return EXIT_SUCCESS;
     }
 
