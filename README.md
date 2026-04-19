@@ -67,15 +67,22 @@ make run-graphics     # SDL2 window (requires SDL2)
 
 ## RL agent
 
-The agent uses **tabular Q-learning** with a hand-crafted 512-state feature vector:
+The agent uses **tabular Q-learning** with a hand-crafted 32 768-state feature vector:
 
-| Feature | Values |
-|---|---|
-| Current direction | 4 (N/S/E/W) |
-| Danger straight / left / right | 3 bits |
-| Food up / down / left / right | 4 bits |
+| Feature | Bits | Values |
+|---|---|---|
+| Current direction | 2 | 4 (N/S/E/W) |
+| Danger straight 1/2/3 steps | 3 | 8 |
+| Danger left 1/2/3 steps | 3 | 8 |
+| Danger right 1/2/3 steps | 3 | 8 |
+| Food X distance bin | 2 | 4 (far-above / near-above / near-below / far-below) |
+| Food Y distance bin | 2 | 4 (far-left / near-left / near-right / far-right) |
 
-The state space is small enough for a plain lookup table (2 KiB), so no neural network is needed.
+The state space fits in a 512 KiB lookup table, so no neural network is needed.
+
+At play time a **flood-fill safety filter** overrides the greedy action when it
+would leave the snake's reachable area smaller than its body length, preventing
+self-enclosure.
 
 ### Train
 
