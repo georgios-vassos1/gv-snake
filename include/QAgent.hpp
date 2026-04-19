@@ -6,23 +6,23 @@
 
 /// Tabular Q-learning agent for Snake.
 ///
-/// State space (512 states):
-///   bits [8:7]  current direction  w=0, s=1, a=2, d=3  →  4 values
-///   bit  [6]    danger straight                          →  2 values
-///   bit  [5]    danger left (relative)                  →  2 values
-///   bit  [4]    danger right (relative)                 →  2 values
-///   bit  [3]    food is above head  (fruit.x < head.x)  →  2 values
-///   bit  [2]    food is below head  (fruit.x > head.x)  →  2 values
-///   bit  [1]    food is left  of head (fruit.y < head.y) → 2 values
-///   bit  [0]    food is right of head (fruit.y > head.y) → 2 values
+/// State space (32768 states):
+///   bits [14:13]  current direction  w=0, s=1, a=2, d=3  →  4 values
+///   bits [12:10]  danger straight 1/2/3 steps ahead       →  8 values
+///   bits  [9: 7]  danger left    1/2/3 steps ahead        →  8 values
+///   bits  [6: 4]  danger right   1/2/3 steps ahead        →  8 values
+///   bit   [3]     food is above head  (fruit.x < head.x)  →  2 values
+///   bit   [2]     food is below head  (fruit.x > head.x)  →  2 values
+///   bit   [1]     food is left  of head (fruit.y < head.y) → 2 values
+///   bit   [0]     food is right of head (fruit.y > head.y) → 2 values
 ///
-///   Total: 4 × 2^7 = 512 states, 4 actions → 2 KiB Q-table.
+///   Total: 4 × 2^13 = 32768 states, 4 actions → 512 KiB Q-table.
 ///
-/// "Dangerous" means the wrapped next cell in that direction holds a body
+/// "Dangerous" means a cell N steps ahead in that direction holds a body
 /// segment ('O').  The border wraps rather than kills, so '*' is ignored.
 class QAgent {
 public:
-    static constexpr int   NUM_STATES   = 512;
+    static constexpr int   NUM_STATES   = 32768;
     static constexpr int   NUM_ACTIONS  = 4;    ///< w, s, a, d
     static constexpr float ALPHA        = 0.1F; ///< learning rate
     static constexpr float GAMMA        = 0.9F; ///< discount factor
@@ -106,8 +106,10 @@ private:
     /// Compute the wrapped next cell when moving in 'dir' from (hx, hy).
     static void nextCell(int hx, int hy, char dir, int border, int& nx, int& ny);
 
-    /// Return true if the next cell in 'dir' holds a body segment.
-    static bool isDangerous(const Game& game, char dir);
+    /// Return true if the cell exactly 'steps' steps ahead in 'absDir' holds a
+    /// body segment ('O').  Each step uses the same absolute direction (straight
+    /// line), consistent with the wrapping movement model.
+    static bool isDangerousN(const Game& game, char absDir, int steps);
 };
 
 #endif // QAGENT_H

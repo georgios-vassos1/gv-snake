@@ -84,14 +84,20 @@ void QAgent::nextCell(int hx, int hy, char dir, int border, int& nx, int& ny)
     }
 }
 
-bool QAgent::isDangerous(const Game& game, char dir)
+bool QAgent::isDangerousN(const Game& game, char absDir, int steps)
 {
-    const Point& head = game.getHead();
-    int          nx   = 0;
-    int          ny   = 0;
-    nextCell(head.getX(), head.getY(), dir, game.getBorder(), nx, ny);
+    int       x      = game.getHead().getX();
+    int       y      = game.getHead().getY();
+    const int border = game.getBorder();
+    for (int i = 0; i < steps; ++i) {
+        int nx = 0;
+        int ny = 0;
+        nextCell(x, y, absDir, border, nx, ny);
+        x = nx;
+        y = ny;
+    }
     // Only 'O' (body segment) is fatal; the border wraps rather than kills.
-    return game.grid()[nx][ny] == 'O';
+    return game.grid()[x][y] == 'O';
 }
 
 // ── State encoding ────────────────────────────────────────────────────────────
@@ -104,17 +110,29 @@ int QAgent::encodeState(const Game& game)
     const Point& head = game.getHead();
     const Point& food = game.getFruit();
 
-    const int dangerStraight = isDangerous(game, absoluteDir(dir, 0)) ? 1 : 0;
-    const int dangerLeft     = isDangerous(game, absoluteDir(dir, 1)) ? 1 : 0;
-    const int dangerRight    = isDangerous(game, absoluteDir(dir, 2)) ? 1 : 0;
-    const int foodUp         = (food.getX() < head.getX()) ? 1 : 0;
-    const int foodDown       = (food.getX() > head.getX()) ? 1 : 0;
-    const int foodLeft       = (food.getY() < head.getY()) ? 1 : 0;
-    const int foodRight      = (food.getY() > head.getY()) ? 1 : 0;
+    const char absStraight = absoluteDir(dir, 0);
+    const char absLeft     = absoluteDir(dir, 1);
+    const char absRight    = absoluteDir(dir, 2);
 
-    const int idx = (dirIndex(dir) << 7) | (dangerStraight << 6) | (dangerLeft << 5) |
-                    (dangerRight << 4) | (foodUp << 3) | (foodDown << 2) | (foodLeft << 1) |
-                    (foodRight << 0);
+    const int ds1 = isDangerousN(game, absStraight, 1) ? 1 : 0;
+    const int ds2 = isDangerousN(game, absStraight, 2) ? 1 : 0;
+    const int ds3 = isDangerousN(game, absStraight, 3) ? 1 : 0;
+    const int dl1 = isDangerousN(game, absLeft, 1) ? 1 : 0;
+    const int dl2 = isDangerousN(game, absLeft, 2) ? 1 : 0;
+    const int dl3 = isDangerousN(game, absLeft, 3) ? 1 : 0;
+    const int dr1 = isDangerousN(game, absRight, 1) ? 1 : 0;
+    const int dr2 = isDangerousN(game, absRight, 2) ? 1 : 0;
+    const int dr3 = isDangerousN(game, absRight, 3) ? 1 : 0;
+
+    const int foodUp    = (food.getX() < head.getX()) ? 1 : 0;
+    const int foodDown  = (food.getX() > head.getX()) ? 1 : 0;
+    const int foodLeft  = (food.getY() < head.getY()) ? 1 : 0;
+    const int foodRight = (food.getY() > head.getY()) ? 1 : 0;
+
+    // bits [14:13] direction | [12:10] straight | [9:7] left | [6:4] right | [3:0] food
+    const int idx = (dirIndex(dir) << 13) | (ds1 << 12) | (ds2 << 11) | (ds3 << 10) | (dl1 << 9) |
+                    (dl2 << 8) | (dl3 << 7) | (dr1 << 6) | (dr2 << 5) | (dr3 << 4) | (foodUp << 3) |
+                    (foodDown << 2) | (foodLeft << 1) | (foodRight << 0);
 
     assert(idx >= 0 && idx < NUM_STATES);
     return idx;
