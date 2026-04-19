@@ -51,6 +51,8 @@ void List::deleteFirst()
     if (first->next == nullptr)
         last = nullptr;
     first = first->next;
+    if (first != nullptr)
+        first->prev = nullptr;
     delete old;
 }
 

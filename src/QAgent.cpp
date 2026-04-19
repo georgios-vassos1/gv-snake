@@ -130,7 +130,8 @@ int QAgent::floodFill(const Game& game, int startX, int startY)
     if (grid[startX][startY] == 'O')
         return 0;
 
-    std::vector<bool>               visited(static_cast<std::size_t>(border) * static_cast<std::size_t>(border), false);
+    std::vector<bool> visited(static_cast<std::size_t>(border) * static_cast<std::size_t>(border),
+                              false);
     std::queue<std::pair<int, int>> q;
 
     visited[static_cast<std::size_t>(startX) * static_cast<std::size_t>(border) +
@@ -144,11 +145,13 @@ int QAgent::floodFill(const Game& game, int startX, int startY)
         const int y = q.front().second;
         q.pop();
         ++count;
-        for (char dir : DIRS) {
+        for (const char dir : DIRS) {
             int nx = 0;
             int ny = 0;
             nextCell(x, y, dir, border, nx, ny);
-            const std::size_t key = static_cast<std::size_t>(nx) * static_cast<std::size_t>(border) + static_cast<std::size_t>(ny);
+            const std::size_t key =
+                static_cast<std::size_t>(nx) * static_cast<std::size_t>(border) +
+                static_cast<std::size_t>(ny);
             if (!visited[key] && grid[nx][ny] != 'O') {
                 visited[key] = true;
                 q.emplace(nx, ny);
@@ -177,10 +180,10 @@ int QAgent::safeAction(const Game& game, int state) const
     const Point& head   = game.getHead();
     const int    border = game.getBorder();
 
-    for (int action : order) {
-        const char dir    = ACTIONS[action];
-        int        nx     = 0;
-        int        ny     = 0;
+    for (const int action : order) {
+        const char dir = ACTIONS[action];
+        int        nx  = 0;
+        int        ny  = 0;
         nextCell(head.getX(), head.getY(), dir, border, nx, ny);
         if (game.grid()[nx][ny] == 'O')
             continue; // immediately fatal

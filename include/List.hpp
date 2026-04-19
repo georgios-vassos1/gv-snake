@@ -23,8 +23,8 @@ public:
     ListNode* getFirst() const;
     ListNode* getLast() const;
 
-    void insertFirst(const Point&);
-    void insertLast(const Point&);
+    void insertFirst(const Point& p);
+    void insertLast(const Point& p);
     void deleteFirst();
     void deleteLast();
     void deleteDaList();
