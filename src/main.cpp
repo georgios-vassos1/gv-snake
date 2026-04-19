@@ -33,6 +33,19 @@ static int maxIdleSteps(int border)
     return interior * interior * 2;
 }
 
+/// Toroidal (wrapped) Manhattan distance between the snake head and the fruit.
+static int wrappedManhattan(const Game& game)
+{
+    const int interior = game.getBorder() - 2;
+    int       dx       = std::abs(game.getFruit().getX() - game.getHead().getX());
+    int       dy       = std::abs(game.getFruit().getY() - game.getHead().getY());
+    if (dx > interior / 2)
+        dx = interior - dx;
+    if (dy > interior / 2)
+        dy = interior - dy;
+    return dx + dy;
+}
+
 static void runTraining(int episodes, const std::string& qtablePath)
 {
     std::printf("Training: %d episodes on %dx%d grid\n", episodes, GRID_SIZE, GRID_SIZE);
@@ -52,8 +65,9 @@ static void runTraining(int episodes, const std::string& qtablePath)
         int  idleSteps = 0;
 
         while (true) {
-            const int  action = agent.selectAction(state);
-            const char dir    = QAgent::ACTIONS[action];
+            const int  action      = agent.safeSelectAction(game, state);
+            const char dir         = QAgent::ACTIONS[action];
+            const int  distBefore  = wrappedManhattan(game);
 
             const TickResult result = game.tick(dir);
 
@@ -62,13 +76,16 @@ static void runTraining(int episodes, const std::string& qtablePath)
                 break;
             }
 
-            const float reward =
-                (result == TickResult::AteFruit) ? QAgent::REWARD_FRUIT : QAgent::REWARD_STEP;
-
-            if (result == TickResult::AteFruit)
+            float reward;
+            if (result == TickResult::AteFruit) {
+                reward    = QAgent::REWARD_FRUIT;
                 idleSteps = 0;
-            else
+            } else {
+                const int distAfter = wrappedManhattan(game);
+                reward = QAgent::REWARD_STEP +
+                         QAgent::REWARD_APPROACH * static_cast<float>(distBefore - distAfter);
                 ++idleSteps;
+            }
 
             const int nextState = QAgent::encodeState(game);
             agent.update(state, action, reward, nextState);

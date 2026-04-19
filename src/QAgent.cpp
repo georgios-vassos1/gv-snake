@@ -247,6 +247,32 @@ int QAgent::selectAction(int state) const
     return greedyAction(state);
 }
 
+int QAgent::safeSelectAction(const Game& game, int state) const
+{
+    assert(state >= 0 && state < NUM_STATES);
+    if ((static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX)) >= epsilon_)
+        return safeAction(game, state);
+
+    // Exploration: pick a random non-immediately-fatal action (no flood-fill).
+    int order[NUM_ACTIONS] = {0, 1, 2, 3};
+    for (int i = NUM_ACTIONS - 1; i > 0; --i) {
+        const int j   = std::rand() % (i + 1);
+        const int tmp = order[i];
+        order[i]      = order[j];
+        order[j]      = tmp;
+    }
+    const Point& head   = game.getHead();
+    const int    border = game.getBorder();
+    for (const int action : order) {
+        int nx = 0;
+        int ny = 0;
+        nextCell(head.getX(), head.getY(), ACTIONS[action], border, nx, ny);
+        if (game.grid()[nx][ny] != 'O')
+            return action;
+    }
+    return order[0]; // fully trapped — return any action
+}
+
 // ── Learning update ───────────────────────────────────────────────────────────
 
 void QAgent::update(int state, int action, float reward, int nextState)

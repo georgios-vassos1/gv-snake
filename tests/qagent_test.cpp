@@ -145,17 +145,19 @@ static void test_q_update_math()
 
     // Initial Q is all zeros.
     // update(s=0, a=0, reward=10, s'=0):
-    //   Q[0][0] += 0.1 * (10 + 0.9 * max(Q[0]) - Q[0][0])
-    //            = 0.1 * (10 + 0) = 1.0
+    //   Q[0][0] += ALPHA * (10 + GAMMA * max(Q[0]) - Q[0][0])
+    //            = ALPHA * 10
     agent.update(0, 0, 10.0F, 0);
-    EXPECT_NEAR(agent.getQ(0, 0), 1.0F, 1e-5F, "first Q-update: Q[0][0] = 1.0");
+    const float q1 = QAgent::ALPHA * 10.0F;
+    EXPECT_NEAR(agent.getQ(0, 0), q1, 1e-5F, "first Q-update: Q[0][0] = ALPHA*10");
 
     // Second update (s=0, a=0, reward=0, s'=0):
-    //   max(Q[0]) = 1.0 (only Q[0][0] is non-zero)
-    //   Q[0][0] += 0.1 * (0 + 0.9*1.0 - 1.0) = 0.1 * (-0.1) = -0.01
-    //   New Q[0][0] = 0.99
+    //   max(Q[0]) = q1 (only Q[0][0] is non-zero)
+    //   Q[0][0] += ALPHA * (0 + GAMMA*q1 - q1) = ALPHA * q1 * (GAMMA-1)
+    //   New Q[0][0] = q1 + ALPHA * q1 * (GAMMA - 1)
     agent.update(0, 0, 0.0F, 0);
-    EXPECT_NEAR(agent.getQ(0, 0), 0.99F, 1e-5F, "second Q-update: Q[0][0] = 0.99");
+    const float q2 = q1 + QAgent::ALPHA * q1 * (QAgent::GAMMA - 1.0F);
+    EXPECT_NEAR(agent.getQ(0, 0), q2, 1e-5F, "second Q-update: Q[0][0] = q1*(1+ALPHA*(GAMMA-1))");
 }
 
 // ── Test 4b: updateTerminal math ──────────────────────────────────────────────
@@ -166,10 +168,10 @@ static void test_updateTerminal_math()
     QAgent agent(0.0F);
 
     // updateTerminal(s=1, a=0, reward=-10):
-    //   Q[1][0] += 0.1 * (-10 - 0) = -1.0
+    //   Q[1][0] += ALPHA * (-10 - 0) = -ALPHA*10
     agent.updateTerminal(1, 0, -10.0F);
-    EXPECT_NEAR(agent.getQ(1, 0), -1.0F, 1e-5F,
-                "terminal Q-update: Q[1][0] = -1.0 (no successor term)");
+    EXPECT_NEAR(agent.getQ(1, 0), -QAgent::ALPHA * 10.0F, 1e-5F,
+                "terminal Q-update: Q[1][0] = -ALPHA*10 (no successor term)");
 }
 
 // ── Test 5: epsilon decay ─────────────────────────────────────────────────────
@@ -281,7 +283,7 @@ static void test_training_improves_score()
         const int maxIdle   = (20 - 2) * (20 - 2) * 2;
 
         while (true) {
-            const int        action = agent.selectAction(state);
+            const int        action = agent.safeSelectAction(game, state);
             const char       dir    = QAgent::ACTIONS[action];
             const TickResult result = game.tick(dir);
 
@@ -362,7 +364,7 @@ static void test_safeAction_improves_over_greedy()
         int  state     = QAgent::encodeState(game);
         int  idleSteps = 0;
         while (true) {
-            const int        action = agent.selectAction(state);
+            const int        action = agent.safeSelectAction(game, state);
             const char       dir    = QAgent::ACTIONS[action];
             const TickResult result = game.tick(dir);
             if (result == TickResult::GameOver) {

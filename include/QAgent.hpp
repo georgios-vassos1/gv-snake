@@ -25,12 +25,13 @@ class QAgent {
 public:
     static constexpr int   NUM_STATES   = 32768;
     static constexpr int   NUM_ACTIONS  = 4;    ///< w, s, a, d
-    static constexpr float ALPHA        = 0.1F; ///< learning rate
-    static constexpr float GAMMA        = 0.9F; ///< discount factor
-    static constexpr float EPSILON_MIN  = 0.01F;
-    static constexpr float REWARD_FRUIT = 10.0F;
-    static constexpr float REWARD_DEATH = -10.0F;
-    static constexpr float REWARD_STEP  = -0.01F; ///< small step penalty
+    static constexpr float ALPHA          = 0.05F; ///< learning rate
+    static constexpr float GAMMA          = 0.95F; ///< discount factor
+    static constexpr float EPSILON_MIN    = 0.005F;
+    static constexpr float REWARD_FRUIT   = 10.0F;
+    static constexpr float REWARD_DEATH   = -10.0F;
+    static constexpr float REWARD_STEP    = -0.01F; ///< small step penalty
+    static constexpr float REWARD_APPROACH = 0.1F;  ///< bonus per cell closer to food
 
     /// Maps action index → direction character: {0='w', 1='s', 2='a', 3='d'}.
     static const char ACTIONS[NUM_ACTIONS];
@@ -69,6 +70,10 @@ public:
 
     /// Epsilon-greedy: random with probability epsilon, greedy otherwise.
     int selectAction(int state) const;
+
+    /// Safe epsilon-greedy: on exploitation uses safeAction; on exploration
+    /// picks a random action that is not immediately fatal (no flood-fill, cheap).
+    int safeSelectAction(const Game& game, int state) const;
 
     /// Pure greedy (argmax Q[state]); use this during evaluation.
     int greedyAction(int state) const;
