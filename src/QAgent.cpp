@@ -5,6 +5,9 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <queue>
+#include <utility>
+#include <vector>
 
 // ── Static data ───────────────────────────────────────────────────────────────
 
@@ -115,6 +118,78 @@ int QAgent::encodeState(const Game& game)
 
     assert(idx >= 0 && idx < NUM_STATES);
     return idx;
+}
+
+// ── Safety filter ─────────────────────────────────────────────────────────────
+
+int QAgent::floodFill(const Game& game, int startX, int startY)
+{
+    const int    border = game.getBorder();
+    char* const* grid   = game.grid();
+
+    if (grid[startX][startY] == 'O')
+        return 0;
+
+    std::vector<bool>               visited(static_cast<std::size_t>(border) * static_cast<std::size_t>(border), false);
+    std::queue<std::pair<int, int>> q;
+
+    visited[static_cast<std::size_t>(startX) * static_cast<std::size_t>(border) +
+            static_cast<std::size_t>(startY)] = true;
+    q.emplace(startX, startY);
+
+    static const char DIRS[4] = {'w', 's', 'a', 'd'};
+    int               count   = 0;
+    while (!q.empty()) {
+        const int x = q.front().first;
+        const int y = q.front().second;
+        q.pop();
+        ++count;
+        for (char dir : DIRS) {
+            int nx = 0;
+            int ny = 0;
+            nextCell(x, y, dir, border, nx, ny);
+            const std::size_t key = static_cast<std::size_t>(nx) * static_cast<std::size_t>(border) + static_cast<std::size_t>(ny);
+            if (!visited[key] && grid[nx][ny] != 'O') {
+                visited[key] = true;
+                q.emplace(nx, ny);
+            }
+        }
+    }
+    return count;
+}
+
+int QAgent::safeAction(const Game& game, int state) const
+{
+    const int minCells = game.getLength();
+
+    // Sort action indices by Q-value descending (insertion sort over 4 elements).
+    int order[NUM_ACTIONS] = {0, 1, 2, 3};
+    for (int i = 1; i < NUM_ACTIONS; ++i) {
+        const int key = order[i];
+        int       j   = i - 1;
+        while (j >= 0 && Q_[state][order[j]] < Q_[state][key]) {
+            order[j + 1] = order[j];
+            --j;
+        }
+        order[j + 1] = key;
+    }
+
+    const Point& head   = game.getHead();
+    const int    border = game.getBorder();
+
+    for (int action : order) {
+        const char dir    = ACTIONS[action];
+        int        nx     = 0;
+        int        ny     = 0;
+        nextCell(head.getX(), head.getY(), dir, border, nx, ny);
+        if (game.grid()[nx][ny] == 'O')
+            continue; // immediately fatal
+        if (floodFill(game, nx, ny) >= minCells)
+            return action;
+    }
+
+    // Fully trapped — fall back to greedy to at least make a move.
+    return greedyAction(state);
 }
 
 // ── Action selection ──────────────────────────────────────────────────────────

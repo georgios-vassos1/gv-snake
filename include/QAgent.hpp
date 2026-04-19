@@ -41,6 +41,19 @@ public:
     /// Encode the current game state as an integer in [0, NUM_STATES).
     static int encodeState(const Game& game);
 
+    // ── Safety filter ─────────────────────────────────────────────────────────
+
+    /// BFS flood-fill from (startX, startY) using wrapping movement.
+    /// Returns the number of interior cells reachable without crossing a body
+    /// segment ('O').  The start cell itself is counted if it is not 'O'.
+    static int floodFill(const Game& game, int startX, int startY);
+
+    /// Like greedyAction but filters out moves that leave the snake's reachable
+    /// area smaller than its body length.  Actions are tried in descending
+    /// Q-value order; the first one that passes the flood-fill check is returned.
+    /// Falls back to greedyAction when every move is unsafe (fully trapped).
+    int safeAction(const Game& game, int state) const;
+
     // ── Action selection ──────────────────────────────────────────────────────
 
     /// Epsilon-greedy: random with probability epsilon, greedy otherwise.

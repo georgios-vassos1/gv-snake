@@ -49,7 +49,7 @@ void AgentRenderer::run(Game& game)
 
         while (true) {
             const int  state  = QAgent::encodeState(game);
-            const int  action = agent_.greedyAction(state);
+            const int  action = agent_.safeAction(game, state);
             const char dir    = QAgent::ACTIONS[action];
 
             const TickResult result = game.tick(dir);

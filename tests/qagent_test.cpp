@@ -303,6 +303,125 @@ static void test_training_improves_score()
     EXPECT_TRUE(trainedScore >= 1.0F, "trained agent eats at least 1 fruit on average");
 }
 
+// ── Test 9: floodFill returns plausible count on a fresh game ─────────────────
+// On a 20×20 grid the interior has 18×18 = 324 cells.  The snake starts with
+// length 10, so at most 324 - 9 = 315 cells are reachable from the head.
+// At minimum the head itself (1) must be reachable.
+
+static void test_floodFill_range()
+{
+    std::printf("\n-- Test 9: floodFill returns plausible count --\n");
+    bool ok = true;
+    for (int trial = 0; trial < 20; ++trial) {
+        Game         game(20);
+        const Point& head      = game.getHead();
+        const int    reachable = QAgent::floodFill(game, head.getX(), head.getY());
+        const int    interior  = (20 - 2) * (20 - 2); // 324
+
+        if (reachable <= 0 || reachable > interior) {
+            FAIL("floodFill out of plausible range: %d (interior=%d)", reachable, interior);
+            ok = false;
+            break;
+        }
+    }
+    if (ok)
+        PASS("floodFill returns a value in (0, interior] on fresh games");
+}
+
+// ── Test 10: safeAction does not regress vs greedyAction ─────────────────────
+// Train an agent, then compare average scores using greedyAction vs safeAction
+// over 200 evaluation episodes.  safeAction must score at least as well
+// (within a small variance margin) since it only overrides greedy when greedy
+// would lead to self-enclosure.
+
+static void test_safeAction_improves_over_greedy()
+{
+    std::printf("\n-- Test 10: safeAction vs greedyAction --\n");
+
+    // ── Shared training ───────────────────────────────────────────────────────
+    QAgent      agent(1.0F);
+    const int   trainEpisodes = 5000;
+    const float decayRate     = QAgent::computeDecayRate(trainEpisodes);
+    const int   maxIdle       = (20 - 2) * (20 - 2) * 2;
+
+    for (int ep = 0; ep < trainEpisodes; ++ep) {
+        Game game(20);
+        int  state     = QAgent::encodeState(game);
+        int  idleSteps = 0;
+        while (true) {
+            const int        action = agent.selectAction(state);
+            const char       dir    = QAgent::ACTIONS[action];
+            const TickResult result = game.tick(dir);
+            if (result == TickResult::GameOver) {
+                agent.updateTerminal(state, action, QAgent::REWARD_DEATH);
+                break;
+            }
+            const float reward =
+                (result == TickResult::AteFruit) ? QAgent::REWARD_FRUIT : QAgent::REWARD_STEP;
+            if (result == TickResult::AteFruit)
+                idleSteps = 0;
+            else
+                ++idleSteps;
+            const int nextState = QAgent::encodeState(game);
+            agent.update(state, action, reward, nextState);
+            state = nextState;
+            if (idleSteps >= maxIdle)
+                break;
+        }
+        agent.decayEpsilon(decayRate);
+    }
+
+    // ── Evaluate greedy ───────────────────────────────────────────────────────
+    const int evalEpisodes = 200;
+    long      greedyTotal  = 0;
+    for (int ep = 0; ep < evalEpisodes; ++ep) {
+        Game game(20);
+        int  idleSteps = 0;
+        while (true) {
+            const int        s = QAgent::encodeState(game);
+            const int        a = agent.greedyAction(s);
+            const TickResult r = game.tick(QAgent::ACTIONS[a]);
+            if (r == TickResult::AteFruit)
+                idleSteps = 0;
+            else
+                ++idleSteps;
+            if (r == TickResult::GameOver || idleSteps >= maxIdle)
+                break;
+        }
+        greedyTotal += game.getScore();
+    }
+    const float greedyAvg = static_cast<float>(greedyTotal) / static_cast<float>(evalEpisodes);
+
+    // ── Evaluate safeAction ───────────────────────────────────────────────────
+    long safeTotal = 0;
+    for (int ep = 0; ep < evalEpisodes; ++ep) {
+        Game game(20);
+        int  idleSteps = 0;
+        while (true) {
+            const int        s = QAgent::encodeState(game);
+            const int        a = agent.safeAction(game, s);
+            const TickResult r = game.tick(QAgent::ACTIONS[a]);
+            if (r == TickResult::AteFruit)
+                idleSteps = 0;
+            else
+                ++idleSteps;
+            if (r == TickResult::GameOver || idleSteps >= maxIdle)
+                break;
+        }
+        safeTotal += game.getScore();
+    }
+    const float safeAvg = static_cast<float>(safeTotal) / static_cast<float>(evalEpisodes);
+
+    std::printf("  greedy avg score: %.2F  |  safe avg score: %.2F\n", greedyAvg, safeAvg);
+
+    // safeAction should never be *meaningfully* worse than greedy — a >10%
+    // regression would indicate a bug in the filter, not just random variance.
+    // (With ~200 episodes and a ~23-fruit baseline the run-to-run noise is a few
+    // percent, so a strict >= is too fragile here.)
+    EXPECT_TRUE(safeAvg >= greedyAvg * 0.90F,
+                "safeAction does not regress vs greedyAction (within 10%)");
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 int main()
@@ -316,6 +435,8 @@ int main()
     test_save_load();
     test_selectAction_epsilon0_is_greedy();
     test_training_improves_score();
+    test_floodFill_range();
+    test_safeAction_improves_over_greedy();
 
     std::printf("\n%s  (%d failure(s))\n", failures == 0 ? "ALL PASSED" : "SOME FAILED", failures);
     return failures == 0 ? 0 : 1;

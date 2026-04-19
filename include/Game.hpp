@@ -32,6 +32,7 @@ public:
 
     int          getBorder() const { return border; }
     int          getScore() const { return score; }
+    int          getLength() const { return score + INITIAL_LENGTH; }
     const Point& getFruit() const { return fruit; }
     char* const* grid() const { return A; }
     const Point& getHead() const;
