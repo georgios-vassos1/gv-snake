@@ -1,6 +1,6 @@
 # Snake
 
-A terminal-based Snake game written in C++11 with an optional SDL2 graphics mode, a tabular Q-learning agent that can be trained to play autonomously, and a Hamiltonian-cycle agent that achieves perfect scores.
+A terminal-based Snake game written in C++11 with an optional SDL2 graphics mode, a tabular Q-learning agent, a Deep Q-Network agent (via libtorch), and a Hamiltonian-cycle agent that achieves perfect scores.
 
 ## Features
 
@@ -11,19 +11,24 @@ A terminal-based Snake game written in C++11 with an optional SDL2 graphics mode
 - Pause/resume with `Space`
 - Persistent high score
 - **Tabular Q-learning agent** — train in minutes, watch it play in terminal or SDL2
+- **DQN agent** — Double DQN with compact feature encoding, via libtorch (optional)
 - **Hamiltonian-cycle agent** — algorithmic solver that fills the entire board (perfect 314/314 scores)
 
 ## Requirements
 
 | Dependency | Version | Notes |
 |---|---|---|
-| C++ compiler | C++11 | GCC or Clang |
+| C++ compiler | C++11 (C++17 for DQN) | GCC or Clang |
 | CMake | 3.14+ | |
 | POSIX threads | — | standard on macOS and Linux |
 | SDL2 | any | optional — enables `--graphics` |
+| libtorch (PyTorch C++) | 2.0+ | optional — enables `--dqn-train` / `--dqn-play` |
 
 Install SDL2 on macOS: `brew install sdl2`  
 Install SDL2 on Ubuntu/Debian: `sudo apt install libsdl2-dev`
+
+Install libtorch on macOS: `brew install pytorch`  
+Then pass `-DCMAKE_PREFIX_PATH="$(python3 -c 'import torch; print(torch.utils.cmake_prefix_path)')"` to CMake (or set `TORCH_DIR` and use `make build-dqn`).
 
 ## Quick start
 
@@ -125,6 +130,47 @@ make play QTABLE=/tmp/my.bin
 The SDL2 window title shows live stats: `Snake [AI]  Score: 42  Best: 71  Ep: 7`.  
 Press **Escape** or close the window to quit.
 
+## DQN agent
+
+The DQN agent uses **Double DQN** with a compact 20-dimensional feature vector and a small MLP (20→64→32→4). It requires libtorch at build time — if not found, the binary is built without it.
+
+### Feature vector
+
+| Features | Dim | Description |
+|---|---|---|
+| Danger 1 step (4 dirs) | 4 | Binary: body segment immediately ahead |
+| Danger 2 steps (4 dirs) | 4 | Binary: body segment two steps ahead |
+| Current direction | 4 | One-hot (N/S/E/W) |
+| Food delta (x, y) | 2 | Wrapping-aware, normalised to [−1, 1] |
+| Food Manhattan distance | 1 | Normalised to [0, 1] |
+| Body length | 1 | Normalised to [0, 1] |
+| Flood-fill ratio (4 dirs) | 4 | Fraction of reachable cells per candidate direction |
+
+### Train
+
+```bash
+make dqn-train                         # 5 000 episodes → dqn_model.pt
+make dqn-train DQN_EPISODES=10000      # longer run
+make dqn-train DQN_MODEL=/tmp/my.pt    # custom path
+```
+
+### Watch the rollout
+
+```bash
+make dqn-play                          # terminal renderer
+make dqn-play-graphics                 # SDL2 window (requires SDL2)
+make dqn-play DQN_MODEL=/tmp/my.pt     # custom model path
+```
+
+### Performance (20×20 grid, 10k episodes)
+
+| Agent | Avg score | Best score |
+|---|---|---|
+| Q-learning (tabular) | ~45 | ~90 |
+| Double DQN | ~30 | ~80 |
+
+The Q-agent's hand-crafted state encoding is hard to beat on small grids; the DQN's advantage emerges on larger grids where the tabular state space would need to be visited far more often to converge.
+
 ## Hamiltonian cycle agent
 
 The agent precomputes a **Hamiltonian cycle** over the 18×18 interior grid — a path that visits every cell exactly once before returning to the start. Following the cycle guarantees the snake never traps itself.
@@ -148,7 +194,7 @@ make hamiltonian-graphics     # SDL2 window (requires SDL2)
 make test
 ```
 
-Five test suites are run via CTest:
+Six test suites are run via CTest:
 
 | Suite | What it checks |
 |---|---|
@@ -157,6 +203,7 @@ Five test suites are run via CTest:
 | `score_test` | Fruit collection and high-score persistence |
 | `qagent_test` | State encoding, Q-update math, epsilon decay, save/load, training convergence |
 | `hamiltonian_test` | Cycle construction, survival, and perfect-score verification (10 episodes) |
+| `dqn_test` | Feature tensor shape/ranges, action bounds, learning signal, save/load round-trip (requires libtorch) |
 
 ## Makefile targets
 
@@ -169,6 +216,9 @@ Five test suites are run via CTest:
 | `make play-graphics` | Watch agent in SDL2 window |
 | `make hamiltonian` | Watch Hamiltonian agent (terminal) |
 | `make hamiltonian-graphics` | Watch Hamiltonian agent (SDL2) |
+| `make dqn-train` | Train the DQN agent (requires libtorch) |
+| `make dqn-play` | Watch DQN agent (terminal) |
+| `make dqn-play-graphics` | Watch DQN agent (SDL2) |
 | `make run` | Human play (terminal) |
 | `make run-graphics` | Human play (SDL2) |
 | `make clean` | Remove compiled objects |
@@ -187,6 +237,8 @@ Five test suites are run via CTest:
 │   ├── GraphicsRenderer.hpp  (SDL2, compiled only when available)
 │   ├── AgentRenderer.hpp     terminal renderer driven by Q-agent
 │   ├── QAgent.hpp            tabular Q-learning agent
+│   ├── DQNAgent.hpp          Double DQN agent (libtorch, optional)
+│   ├── DQNAgentRenderer.hpp  terminal renderer driven by DQN agent
 │   ├── HamiltonianAgent.hpp  Hamiltonian-cycle agent with greedy shortcuts
 │   ├── ShitList.hpp        snake body (doubly-linked list wrapper)
 │   ├── List.hpp            generic doubly-linked list
@@ -197,6 +249,8 @@ Five test suites are run via CTest:
 │   ├── main.cpp              entry point and CLI flag dispatch
 │   ├── Game.cpp
 │   ├── QAgent.cpp
+│   ├── DQNAgent.cpp          (compiled only when libtorch found)
+│   ├── DQNAgentRenderer.cpp
 │   ├── HamiltonianAgent.cpp
 │   ├── AgentRenderer.cpp
 │   ├── TerminalRenderer.cpp
@@ -204,6 +258,8 @@ Five test suites are run via CTest:
 │   └── ...
 └── tests/
     ├── qagent_test.cpp
+    ├── dqn_test.cpp
+    ├── hamiltonian_test.cpp
     ├── score_test.cpp
     ├── Point_test.cpp
     └── List_test.cpp
