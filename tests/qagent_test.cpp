@@ -111,7 +111,8 @@ static void test_foodDistBin()
     std::printf("\n-- Test 2b: foodDistBin bucketing --\n");
     const int interior = 20; // thresh = max(1, 20/4) = 5
     EXPECT_EQ(QAgent::foodDistBin(-10, interior), 0, "foodDistBin: far negative → 0");
-    EXPECT_EQ(QAgent::foodDistBin(-5, interior), 0, "foodDistBin: -thresh → 0");
+    EXPECT_EQ(QAgent::foodDistBin(-6, interior), 0, "foodDistBin: beyond -thresh → 0");
+    EXPECT_EQ(QAgent::foodDistBin(-5, interior), 1, "foodDistBin: exactly -thresh → 1");
     EXPECT_EQ(QAgent::foodDistBin(-4, interior), 1, "foodDistBin: near negative → 1");
     EXPECT_EQ(QAgent::foodDistBin(-1, interior), 1, "foodDistBin: just above → 1");
     EXPECT_EQ(QAgent::foodDistBin(0, interior), 1, "foodDistBin: same → 1");
@@ -440,6 +441,7 @@ int main()
 {
     test_encodeState_range();
     test_encodeState_food_bits();
+    test_foodDistBin();
     test_greedyAction();
     test_q_update_math();
     test_updateTerminal_math();

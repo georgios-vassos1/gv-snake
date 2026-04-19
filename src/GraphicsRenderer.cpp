@@ -68,7 +68,7 @@ void GraphicsRenderer::draw(const Game& game, int episode) const
             default: continue; // empty — already cleared
             }
             SDL_SetRenderDrawColor(sdlRenderer, c->r, c->g, c->b, c->a);
-            SDL_Rect rect = {col * CELL_SIZE, row * CELL_SIZE, CELL_SIZE, CELL_SIZE};
+            const SDL_Rect rect = {col * CELL_SIZE, row * CELL_SIZE, CELL_SIZE, CELL_SIZE};
             SDL_RenderFillRect(sdlRenderer, &rect);
         }
     }
@@ -121,11 +121,11 @@ void GraphicsRenderer::runHuman(Game& game)
         if (!running)
             break;
 
-        Uint32 now = SDL_GetTicks();
+        const Uint32 now = SDL_GetTicks();
         if (now - lastTick >= static_cast<Uint32>(TICK_MS)) {
             lastTick = now;
             if (currentDir != 0 && currentDir != ' ') {
-                TickResult result = game.tick(currentDir);
+                const TickResult result = game.tick(currentDir);
                 draw(game);
                 if (result == TickResult::GameOver) {
                     const int finalScore = game.getScore();
@@ -187,7 +187,7 @@ void GraphicsRenderer::runAgent(int border)
             if (quit)
                 break;
 
-            Uint32 now = SDL_GetTicks();
+            const Uint32 now = SDL_GetTicks();
             if (now - lastTick < static_cast<Uint32>(TICK_MS)) {
                 SDL_Delay(4);
                 continue;
@@ -195,7 +195,7 @@ void GraphicsRenderer::runAgent(int border)
             lastTick = now;
 
             const int  state  = QAgent::encodeState(game);
-            const int  action = agent_->greedyAction(state);
+            const int  action = agent_->safeAction(game, state);
             const char dir    = QAgent::ACTIONS[action];
 
             const TickResult result = game.tick(dir);
