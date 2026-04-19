@@ -36,7 +36,6 @@ public:
     const Point& getFruit() const { return fruit; }
     char* const* grid() const { return A; }
     const Point& getHead() const;
-    const Point& getTail() const;
     char         getLastMove() const;
 
     TickResult tick(char dir);

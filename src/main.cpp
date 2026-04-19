@@ -68,9 +68,9 @@ static void runTraining(int episodes, const std::string& qtablePath)
         int  idleSteps = 0;
 
         while (true) {
-            const int  action      = agent.safeSelectAction(game, state);
-            const char dir         = QAgent::ACTIONS[action];
-            const int  distBefore  = wrappedManhattan(game);
+            const int  action     = agent.safeSelectAction(game, state);
+            const char dir        = QAgent::ACTIONS[action];
+            const int  distBefore = wrappedManhattan(game);
 
             const TickResult result = game.tick(dir);
 
@@ -85,7 +85,7 @@ static void runTraining(int episodes, const std::string& qtablePath)
                 idleSteps = 0;
             } else {
                 const int distAfter = wrappedManhattan(game);
-                reward = QAgent::REWARD_STEP +
+                reward              = QAgent::REWARD_STEP +
                          QAgent::REWARD_APPROACH * static_cast<float>(distBefore - distAfter);
 
                 // Space-awareness: penalise moves that shrink reachable area
@@ -203,17 +203,23 @@ static void runHamiltonian(bool useGraphics)
         std::cout << "\033[2J\033[H\033[?25l";
         std::cout.flush();
 
-        const int maxIdle = GRID_SIZE * GRID_SIZE * 2;
-        int       episode  = 0;
+        const int maxIdle   = GRID_SIZE * GRID_SIZE * 2;
+        int       episode   = 0;
         int       bestScore = loadHighScore();
 
         while (true) {
             ++episode;
             Game epGame(GRID_SIZE);
             int  idleSteps = 0;
+            bool quit      = false;
             drawFrame(epGame, episode, bestScore);
 
             while (true) {
+                if (kbhit() && getch() == 'q') {
+                    quit = true;
+                    break;
+                }
+
                 const char       dir    = agent.nextMove(epGame);
                 const TickResult result = epGame.tick(dir);
                 drawFrame(epGame, episode, bestScore);
@@ -233,6 +239,9 @@ static void runHamiltonian(bool useGraphics)
                 if (result == TickResult::GameOver || idleSteps >= maxIdle)
                     break;
             }
+
+            if (quit)
+                break;
         }
     }
 }
@@ -297,8 +306,8 @@ int main(int argc, char* argv[])
         }
     }
 
-    if (doTrain && doPlay) {
-        std::fprintf(stderr, "ERROR: --train and --play are mutually exclusive\n");
+    if ((doTrain ? 1 : 0) + (doPlay ? 1 : 0) + (doHamiltonian ? 1 : 0) > 1) {
+        std::fprintf(stderr, "ERROR: --train, --play, and --hamiltonian are mutually exclusive\n");
         return EXIT_FAILURE;
     }
 

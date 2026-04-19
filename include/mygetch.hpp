@@ -10,4 +10,7 @@ void cleanupGetch();
 // Read one character (terminal must already be initialised with initGetch).
 char getch();
 
+// Return true if a keypress is waiting in stdin (non-blocking).
+bool kbhit();
+
 #endif

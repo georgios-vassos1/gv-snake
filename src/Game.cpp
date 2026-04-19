@@ -72,12 +72,6 @@ const Point& Game::getHead() const
     return daCrap.getDaShit().getFirst()->data;
 }
 
-const Point& Game::getTail() const
-{
-    assert(daCrap.getDaShit().getLast() != nullptr);
-    return daCrap.getDaShit().getLast()->data;
-}
-
 char Game::getLastMove() const
 {
     return daCrap.getLastMove();
