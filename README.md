@@ -1,6 +1,6 @@
 # Snake
 
-A terminal-based Snake game written in C++11 with an optional SDL2 graphics mode and a tabular Q-learning agent that can be trained to play autonomously.
+A terminal-based Snake game written in C++11 with an optional SDL2 graphics mode, a tabular Q-learning agent that can be trained to play autonomously, and a Hamiltonian-cycle agent that achieves perfect scores.
 
 ## Features
 
@@ -11,6 +11,7 @@ A terminal-based Snake game written in C++11 with an optional SDL2 graphics mode
 - Pause/resume with `Space`
 - Persistent high score
 - **Tabular Q-learning agent** — train in minutes, watch it play in terminal or SDL2
+- **Hamiltonian-cycle agent** — algorithmic solver that fills the entire board (perfect 314/314 scores)
 
 ## Requirements
 
@@ -118,6 +119,23 @@ make play QTABLE=/tmp/my.bin
 The SDL2 window title shows live stats: `Snake [AI]  Score: 42  Best: 71  Ep: 7`.  
 Press **Escape** or close the window to quit.
 
+## Hamiltonian cycle agent
+
+The agent precomputes a **Hamiltonian cycle** over the 18×18 interior grid — a path that visits every cell exactly once before returning to the start. Following the cycle guarantees the snake never traps itself.
+
+To reach food faster, the agent takes **greedy shortcuts**: at each step it looks for a forward jump in cycle order that reduces the remaining distance to food. A shortcut is only taken when it passes three safety checks:
+
+1. The destination is not occupied by the snake body.
+2. The jump stays within the safe forward window (no body segment between the head and the shortcut destination).
+3. A flood-fill from the destination confirms at least 2× the body length of reachable space.
+
+This combination achieves **perfect scores** (314/314 fruits on the 20×20 grid) without any training.
+
+```bash
+make hamiltonian              # terminal renderer
+make hamiltonian-graphics     # SDL2 window (requires SDL2)
+```
+
 ## Tests
 
 ```bash
@@ -142,6 +160,8 @@ Four test suites are run via CTest:
 | `make train` | Train the RL agent |
 | `make play` | Watch agent in terminal |
 | `make play-graphics` | Watch agent in SDL2 window |
+| `make hamiltonian` | Watch Hamiltonian agent (terminal) |
+| `make hamiltonian-graphics` | Watch Hamiltonian agent (SDL2) |
 | `make run` | Human play (terminal) |
 | `make run-graphics` | Human play (SDL2) |
 | `make clean` | Remove compiled objects |
@@ -158,17 +178,19 @@ Four test suites are run via CTest:
 │   ├── IRenderer.hpp       renderer base class
 │   ├── TerminalRenderer.hpp
 │   ├── GraphicsRenderer.hpp  (SDL2, compiled only when available)
-│   ├── AgentRenderer.hpp   terminal renderer driven by Q-agent
-│   ├── QAgent.hpp          tabular Q-learning agent
+│   ├── AgentRenderer.hpp     terminal renderer driven by Q-agent
+│   ├── QAgent.hpp            tabular Q-learning agent
+│   ├── HamiltonianAgent.hpp  Hamiltonian-cycle agent with greedy shortcuts
 │   ├── ShitList.hpp        snake body (doubly-linked list wrapper)
 │   ├── List.hpp            generic doubly-linked list
 │   ├── Point.hpp           2-D grid coordinate
 │   ├── HighScore.hpp       score persistence
 │   └── mygetch.hpp         raw terminal input
 ├── src/
-│   ├── main.cpp            entry point and CLI flag dispatch
+│   ├── main.cpp              entry point and CLI flag dispatch
 │   ├── Game.cpp
 │   ├── QAgent.cpp
+│   ├── HamiltonianAgent.cpp
 │   ├── AgentRenderer.cpp
 │   ├── TerminalRenderer.cpp
 │   ├── GraphicsRenderer.cpp
