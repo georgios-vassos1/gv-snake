@@ -59,3 +59,7 @@ add_test(NAME score_test COMMAND score_test)
 add_executable(qagent_test tests/qagent_test.cpp)
 target_link_libraries(qagent_test PRIVATE snake_core)
 add_test(NAME qagent_test COMMAND qagent_test)
+
+add_executable(hamiltonian_test tests/hamiltonian_test.cpp)
+target_link_libraries(hamiltonian_test PRIVATE snake_core)
+add_test(NAME hamiltonian_test COMMAND hamiltonian_test)

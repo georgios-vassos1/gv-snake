@@ -142,7 +142,7 @@ make hamiltonian-graphics     # SDL2 window (requires SDL2)
 make test
 ```
 
-Four test suites are run via CTest:
+Five test suites are run via CTest:
 
 | Suite | What it checks |
 |---|---|
@@ -150,6 +150,7 @@ Four test suites are run via CTest:
 | `list_test` | Doubly-linked list operations |
 | `score_test` | Fruit collection and high-score persistence |
 | `qagent_test` | State encoding, Q-update math, epsilon decay, save/load, training convergence |
+| `hamiltonian_test` | Cycle construction, survival, and perfect-score verification (10 episodes) |
 
 ## Makefile targets
 

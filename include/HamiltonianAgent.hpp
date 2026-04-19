@@ -26,6 +26,16 @@ public:
     /// Returns the next direction character ('w','s','a','d').
     char nextMove(const Game& game) const;
 
+    // ── Accessors (read-only, for testing) ────────────────────────────────────
+
+    int                                     interior() const { return interior_; }
+    int                                     cycleLen() const { return N_; }
+    const std::vector<std::pair<int, int>>& cycle() const { return cycle_; }
+    const std::vector<std::vector<int>>&    order() const { return order_; }
+
+    /// Direction character from adjacent cell (fromR,fromC) to (toR,toC).
+    static char dirTo(int fromR, int fromC, int toR, int toC);
+
 private:
     int border_;
     int interior_; ///< border - 2
@@ -38,9 +48,6 @@ private:
     std::vector<std::vector<int>> order_;
 
     void buildCycle();
-
-    /// Direction character from adjacent cell (fromR,fromC) to (toR,toC).
-    static char dirTo(int fromR, int fromC, int toR, int toC);
 };
 
 #endif // HAMILTONIAN_AGENT_H

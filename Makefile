@@ -5,7 +5,7 @@ SNAKE      := $(BUILD_DIR)/snake
 QTABLE     := $(BUILD_DIR)/qtable.bin
 EPISODES   ?= 10000
 
-.PHONY: all configure build test train play play-graphics hamiltonian hamiltonian-graphics clean distclean help
+.PHONY: all configure build test train play play-graphics hamiltonian hamiltonian-graphics run run-graphics clean distclean help
 
 # ── Default target ────────────────────────────────────────────────────────────
 
