@@ -36,10 +36,39 @@ else()
     message(STATUS "SDL2 not found — terminal-only build")
 endif()
 
+# ── Optional libtorch (DQN agent) ─────────────────────────────────────────────
+find_package(Torch QUIET)
+if(Torch_FOUND)
+    message(STATUS "libtorch found — DQN agent enabled")
+    add_library(snake_dqn STATIC
+        src/DQNAgent.cpp
+        src/DQNAgentRenderer.cpp
+    )
+    target_include_directories(snake_dqn PUBLIC include)
+    target_compile_options(snake_dqn PRIVATE -Wall -Wextra -O2)
+    set_target_properties(snake_dqn PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED ON
+    )
+    target_compile_definitions(snake_dqn PUBLIC DQN_AVAILABLE)
+    target_link_libraries(snake_dqn PUBLIC snake_core ${TORCH_LIBRARIES})
+    target_include_directories(snake_dqn PUBLIC ${TORCH_INCLUDE_DIRS})
+else()
+    message(STATUS "libtorch not found — DQN agent disabled")
+endif()
+
 # ── Main executable ───────────────────────────────────────────────────────────
 add_executable(snake src/main.cpp)
 target_compile_options(snake PRIVATE -Wall -Wextra -O2)
 target_link_libraries(snake PRIVATE snake_core)
+
+if(Torch_FOUND)
+    target_link_libraries(snake PRIVATE snake_dqn)
+    set_target_properties(snake PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED ON
+    )
+endif()
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
 enable_testing()
@@ -63,3 +92,10 @@ add_test(NAME qagent_test COMMAND qagent_test)
 add_executable(hamiltonian_test tests/hamiltonian_test.cpp)
 target_link_libraries(hamiltonian_test PRIVATE snake_core)
 add_test(NAME hamiltonian_test COMMAND hamiltonian_test)
+
+if(Torch_FOUND)
+    add_executable(dqn_test tests/dqn_test.cpp)
+    target_link_libraries(dqn_test PRIVATE snake_dqn)
+    set_target_properties(dqn_test PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
+    add_test(NAME dqn_test COMMAND dqn_test)
+endif()

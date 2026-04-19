@@ -6,6 +6,10 @@
 #include "QAgent.hpp"
 #include <cstdio>
 
+#ifdef DQN_AVAILABLE
+#include "DQNAgent.hpp"
+#endif
+
 // Colours (R, G, B, A)
 static const SDL_Color COL_BORDER = {100, 100, 100, 255};
 static const SDL_Color COL_EMPTY  = {20, 20, 20, 255};
@@ -16,6 +20,9 @@ static const SDL_Color COL_FRUIT  = {220, 50, 50, 255};
 GraphicsRenderer::GraphicsRenderer(int border)
     : window(nullptr), sdlRenderer(nullptr), highScore(loadHighScore()), agent_(nullptr),
       hamiltonian_(nullptr)
+#ifdef DQN_AVAILABLE
+      , dqnAgent_(nullptr)
+#endif
 {
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         std::fprintf(stderr, "SDL_Init error: %s\n", SDL_GetError());
@@ -287,6 +294,68 @@ void GraphicsRenderer::runHamiltonian(int border)
     }
 }
 
+// ── DQN agent play ───────────────────────────────────────────────────────────
+
+#ifdef DQN_AVAILABLE
+
+void GraphicsRenderer::runDQNAgent(int border)
+{
+    const int maxIdle = (border - 2) * (border - 2) * 2;
+    int       episode = 0;
+
+    while (true) {
+        ++episode;
+        Game   game(border);
+        Uint32 lastTick  = SDL_GetTicks();
+        int    idleSteps = 0;
+        bool   quit      = false;
+
+        draw(game, episode);
+
+        while (true) {
+            SDL_Event e;
+            while (SDL_PollEvent(&e)) {
+                if (e.type == SDL_QUIT || (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE))
+                    quit = true;
+            }
+            if (quit)
+                break;
+
+            const Uint32 now = SDL_GetTicks();
+            if (now - lastTick < static_cast<Uint32>(TICK_MS)) {
+                SDL_Delay(4);
+                continue;
+            }
+            lastTick = now;
+
+            auto       state  = DQNAgent::encodeState(game);
+            const int  action = dqnAgent_->greedyAction(state);
+            const char dir    = "wsad"[action];
+
+            const TickResult result = game.tick(dir);
+            draw(game, episode);
+
+            if (result == TickResult::AteFruit) {
+                idleSteps = 0;
+                if (game.getScore() > highScore) {
+                    highScore = game.getScore();
+                    saveHighScore(highScore);
+                }
+            } else {
+                ++idleSteps;
+            }
+
+            if (result == TickResult::GameOver || idleSteps >= maxIdle)
+                break;
+        }
+
+        if (quit)
+            break;
+    }
+}
+
+#endif // DQN_AVAILABLE
+
 // ── Dispatch ──────────────────────────────────────────────────────────────────
 
 void GraphicsRenderer::run(Game& game)
@@ -294,6 +363,12 @@ void GraphicsRenderer::run(Game& game)
     if (!sdlRenderer)
         return;
 
+#ifdef DQN_AVAILABLE
+    if (dqnAgent_) {
+        runDQNAgent(game.getBorder());
+        return;
+    }
+#endif
     if (hamiltonian_)
         runHamiltonian(game.getBorder());
     else if (agent_)

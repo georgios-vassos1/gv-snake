@@ -9,21 +9,30 @@
 
 class QAgent;           // forward declaration — only needed when setAgent() is called
 class HamiltonianAgent; // forward declaration — only needed when setHamiltonianAgent() is called
+#ifdef DQN_AVAILABLE
+class DQNAgent;
+#endif
 
 class GraphicsRenderer : public IRenderer {
     static const int CELL_SIZE = 12;
     static const int TICK_MS   = 70;
 
-    SDL_Window*           window;
-    SDL_Renderer*         sdlRenderer;
-    int                   highScore;
-    const QAgent*         agent_;       ///< non-null → Q-agent play
+    SDL_Window*             window;
+    SDL_Renderer*           sdlRenderer;
+    int                     highScore;
+    const QAgent*           agent_;       ///< non-null → Q-agent play
     const HamiltonianAgent* hamiltonian_; ///< non-null → Hamiltonian play
+#ifdef DQN_AVAILABLE
+    const DQNAgent*         dqnAgent_;    ///< non-null → DQN play
+#endif
 
     void draw(const Game& game, int episode = 0) const;
     void runHuman(Game& game);
     void runAgent(int border);
     void runHamiltonian(int border);
+#ifdef DQN_AVAILABLE
+    void runDQNAgent(int border);
+#endif
 
 public:
     explicit GraphicsRenderer(int border);
@@ -36,6 +45,11 @@ public:
 
     /// Switch to Hamiltonian-agent driven mode.
     void setHamiltonianAgent(const HamiltonianAgent& h) { hamiltonian_ = &h; }
+
+#ifdef DQN_AVAILABLE
+    /// Switch to DQN-agent driven mode.
+    void setDQNAgent(const DQNAgent& a) { dqnAgent_ = &a; }
+#endif
 
     void run(Game& game) override;
 };
