@@ -1,6 +1,7 @@
 #ifdef GRAPHICS_AVAILABLE
 
 #include "GraphicsRenderer.hpp"
+#include "HamiltonianAgent.hpp"
 #include "HighScore.hpp"
 #include "QAgent.hpp"
 #include <cstdio>
@@ -13,7 +14,8 @@ static const SDL_Color COL_BODY   = {30, 130, 30, 255};
 static const SDL_Color COL_FRUIT  = {220, 50, 50, 255};
 
 GraphicsRenderer::GraphicsRenderer(int border)
-    : window(nullptr), sdlRenderer(nullptr), highScore(loadHighScore()), agent_(nullptr)
+    : window(nullptr), sdlRenderer(nullptr), highScore(loadHighScore()), agent_(nullptr),
+      hamiltonian_(nullptr)
 {
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         std::fprintf(stderr, "SDL_Init error: %s\n", SDL_GetError());
@@ -222,6 +224,69 @@ void GraphicsRenderer::runAgent(int border)
     }
 }
 
+// ── Hamiltonian agent play ────────────────────────────────────────────────────
+
+void GraphicsRenderer::runHamiltonian(int border)
+{
+    const int maxIdle = border * border * 2; // generous: cycle length is interior²
+
+    int episode = 0;
+
+    while (true) {
+        ++episode;
+        Game   game(border);
+        Uint32 lastTick  = SDL_GetTicks();
+        int    idleSteps = 0;
+        bool   quit      = false;
+
+        draw(game, episode);
+
+        while (true) {
+            SDL_Event e;
+            while (SDL_PollEvent(&e)) {
+                if (e.type == SDL_QUIT) {
+                    quit = true;
+                    break;
+                }
+                if (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE) {
+                    quit = true;
+                    break;
+                }
+            }
+            if (quit)
+                break;
+
+            const Uint32 now = SDL_GetTicks();
+            if (now - lastTick < static_cast<Uint32>(TICK_MS)) {
+                SDL_Delay(4);
+                continue;
+            }
+            lastTick = now;
+
+            const char       dir    = hamiltonian_->nextMove(game);
+            const TickResult result = game.tick(dir);
+            draw(game, episode);
+
+            if (result == TickResult::AteFruit) {
+                idleSteps       = 0;
+                const int score = game.getScore();
+                if (score > highScore) {
+                    highScore = score;
+                    saveHighScore(score);
+                }
+            } else {
+                ++idleSteps;
+            }
+
+            if (result == TickResult::GameOver || idleSteps >= maxIdle)
+                break;
+        }
+
+        if (quit)
+            break;
+    }
+}
+
 // ── Dispatch ──────────────────────────────────────────────────────────────────
 
 void GraphicsRenderer::run(Game& game)
@@ -229,7 +294,9 @@ void GraphicsRenderer::run(Game& game)
     if (!sdlRenderer)
         return;
 
-    if (agent_)
+    if (hamiltonian_)
+        runHamiltonian(game.getBorder());
+    else if (agent_)
         runAgent(game.getBorder());
     else
         runHuman(game);

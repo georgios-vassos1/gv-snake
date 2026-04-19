@@ -7,20 +7,23 @@
 
 #include <SDL2/SDL.h>
 
-class QAgent; // forward declaration — only needed when setAgent() is called
+class QAgent;           // forward declaration — only needed when setAgent() is called
+class HamiltonianAgent; // forward declaration — only needed when setHamiltonianAgent() is called
 
 class GraphicsRenderer : public IRenderer {
     static const int CELL_SIZE = 12;
     static const int TICK_MS   = 70;
 
-    SDL_Window*   window;
-    SDL_Renderer* sdlRenderer;
-    int           highScore;
-    const QAgent* agent_; ///< nullptr → human play; non-null → agent play
+    SDL_Window*           window;
+    SDL_Renderer*         sdlRenderer;
+    int                   highScore;
+    const QAgent*         agent_;       ///< non-null → Q-agent play
+    const HamiltonianAgent* hamiltonian_; ///< non-null → Hamiltonian play
 
     void draw(const Game& game, int episode = 0) const;
     void runHuman(Game& game);
     void runAgent(int border);
+    void runHamiltonian(int border);
 
 public:
     explicit GraphicsRenderer(int border);
@@ -28,8 +31,11 @@ public:
     GraphicsRenderer(const GraphicsRenderer&)            = delete;
     GraphicsRenderer& operator=(const GraphicsRenderer&) = delete;
 
-    /// Call before run() to switch to agent-driven mode.
+    /// Switch to Q-agent driven mode.
     void setAgent(const QAgent& agent) { agent_ = &agent; }
+
+    /// Switch to Hamiltonian-agent driven mode.
+    void setHamiltonianAgent(const HamiltonianAgent& h) { hamiltonian_ = &h; }
 
     void run(Game& game) override;
 };

@@ -30,8 +30,9 @@ public:
     static constexpr float EPSILON_MIN    = 0.005F;
     static constexpr float REWARD_FRUIT   = 10.0F;
     static constexpr float REWARD_DEATH   = -10.0F;
-    static constexpr float REWARD_STEP    = -0.01F; ///< small step penalty
-    static constexpr float REWARD_APPROACH = 0.1F;  ///< bonus per cell closer to food
+    static constexpr float REWARD_STEP         = -0.01F; ///< small step penalty
+    static constexpr float REWARD_APPROACH     = 0.1F;  ///< bonus per cell closer to food
+    static constexpr float REWARD_SPACE_PENALTY = -0.2F; ///< penalty when reachable area < 2×body
 
     /// Maps action index → direction character: {0='w', 1='s', 2='a', 3='d'}.
     static const char ACTIONS[NUM_ACTIONS];
@@ -104,6 +105,11 @@ public:
     /// Read Q-table from a binary file.  Returns false if file not found.
     bool load(const std::string& path);
 
+    /// Compute the wrapped next cell when moving in 'dir' from (hx, hy).
+    /// Mirrors ShitList::nextHead so danger detection stays consistent with
+    /// the game's own collision logic.  Used by HamiltonianAgent and tests.
+    static void nextCell(int hx, int hy, char dir, int border, int& nx, int& ny);
+
     // ── Inspection (tests / debugging) ───────────────────────────────────────
 
     float getQ(int state, int action) const;
@@ -118,9 +124,6 @@ private:
     /// Given the current absolute direction and a relative offset
     /// (0 = straight, 1 = left, 2 = right), return the absolute direction.
     static char absoluteDir(char current, int relativeOffset);
-
-    /// Compute the wrapped next cell when moving in 'dir' from (hx, hy).
-    static void nextCell(int hx, int hy, char dir, int border, int& nx, int& ny);
 
     /// Return true if the cell exactly 'steps' steps ahead in 'absDir' holds a
     /// body segment ('O').  Each step uses the same absolute direction (straight

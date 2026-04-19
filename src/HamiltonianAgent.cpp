@@ -74,9 +74,12 @@ void HamiltonianAgent::buildCycle()
 
 char HamiltonianAgent::dirTo(int fromR, int fromC, int toR, int toC)
 {
-    if (toR < fromR) return 'w';
-    if (toR > fromR) return 's';
-    if (toC < fromC) return 'a';
+    if (toR < fromR)
+        return 'w';
+    if (toR > fromR)
+        return 's';
+    if (toC < fromC)
+        return 'a';
     return 'd';
 }
 
@@ -118,7 +121,7 @@ char HamiltonianAgent::nextMove(const Game& game) const
     // Find nearest occupied cycle position ahead of h.
     int safeDelta = virtualFreeLen; // default: no body segment found within free zone
     for (int d = 1; d <= virtualFreeLen; ++d) {
-        const int pos = (h + d) % N_;
+        const int   pos  = (h + d) % N_;
         const auto& cell = cycle_[static_cast<std::size_t>(pos)];
         if (game.grid()[cell.first][cell.second] == 'O') {
             safeDelta = d;
