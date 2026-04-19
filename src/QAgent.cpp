@@ -247,11 +247,17 @@ int QAgent::selectAction(int state) const
     return greedyAction(state);
 }
 
-int QAgent::safeSelectAction(const Game& game, int state) const
+int QAgent::safeSelectAction(const Game& game, int state, bool* greedy) const
 {
     assert(state >= 0 && state < NUM_STATES);
-    if ((static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX)) >= epsilon_)
+    if ((static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX)) >= epsilon_) {
+        if (greedy)
+            *greedy = true;
         return safeAction(game, state);
+    }
+
+    if (greedy)
+        *greedy = false;
 
     // Exploration: pick a random non-immediately-fatal action (no flood-fill).
     int order[NUM_ACTIONS] = {0, 1, 2, 3};
@@ -289,6 +295,78 @@ void QAgent::updateTerminal(int state, int action, float reward)
     assert(state >= 0 && state < NUM_STATES);
     assert(action >= 0 && action < NUM_ACTIONS);
     Q_[state][action] += ALPHA * (reward - Q_[state][action]);
+}
+
+// ── Eligibility traces (Watkins's Q(λ)) ──────────────────────────────────────
+
+void QAgent::resetTraces()
+{
+    traces_.clear();
+}
+
+void QAgent::updateWithTraces(int state, int action, float reward, int nextState, bool greedy)
+{
+    assert(state >= 0 && state < NUM_STATES);
+    assert(action >= 0 && action < NUM_ACTIONS);
+    assert(nextState >= 0 && nextState < NUM_STATES);
+
+    // TD error.
+    const float maxNext = *std::max_element(Q_[nextState], Q_[nextState] + NUM_ACTIONS);
+    const float delta   = reward + GAMMA * maxNext - Q_[state][action];
+
+    // Replace trace for current (s, a).
+    bool found = false;
+    for (Trace& t : traces_) {
+        if (t.state == state && t.action == action) {
+            t.value = 1.0F;
+            found   = true;
+            break;
+        }
+    }
+    if (!found)
+        traces_.push_back({state, action, 1.0F});
+
+    // Propagate TD error through all active traces and decay.
+    const float decay = GAMMA * LAMBDA;
+    std::size_t write = 0;
+    for (std::size_t i = 0; i < traces_.size(); ++i) {
+        Trace& t = traces_[i];
+        Q_[t.state][t.action] += ALPHA * delta * t.value;
+        t.value *= decay;
+        if (t.value >= TRACE_MIN) {
+            traces_[write++] = t;
+        }
+    }
+    traces_.resize(write);
+
+    // Watkins's cutoff: exploratory action zeroes all traces.
+    if (!greedy)
+        traces_.clear();
+}
+
+void QAgent::updateTerminalWithTraces(int state, int action, float reward)
+{
+    assert(state >= 0 && state < NUM_STATES);
+    assert(action >= 0 && action < NUM_ACTIONS);
+
+    const float delta = reward - Q_[state][action];
+
+    // Replace trace for current (s, a).
+    bool found = false;
+    for (Trace& t : traces_) {
+        if (t.state == state && t.action == action) {
+            t.value = 1.0F;
+            found   = true;
+            break;
+        }
+    }
+    if (!found)
+        traces_.push_back({state, action, 1.0F});
+
+    // Propagate and clear (episode is over).
+    for (const Trace& t : traces_)
+        Q_[t.state][t.action] += ALPHA * delta * t.value;
+    traces_.clear();
 }
 
 void QAgent::decayEpsilon(float decayRate)

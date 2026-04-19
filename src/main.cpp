@@ -67,15 +67,18 @@ static void runTraining(int episodes, const std::string& qtablePath)
         int  state     = QAgent::encodeState(game);
         int  idleSteps = 0;
 
+        agent.resetTraces();
+
         while (true) {
-            const int  action     = agent.safeSelectAction(game, state);
+            bool       greedy     = false;
+            const int  action     = agent.safeSelectAction(game, state, &greedy);
             const char dir        = QAgent::ACTIONS[action];
             const int  distBefore = wrappedManhattan(game);
 
             const TickResult result = game.tick(dir);
 
             if (result == TickResult::GameOver) {
-                agent.updateTerminal(state, action, QAgent::REWARD_DEATH);
+                agent.updateTerminalWithTraces(state, action, QAgent::REWARD_DEATH);
                 break;
             }
 
@@ -98,7 +101,7 @@ static void runTraining(int episodes, const std::string& qtablePath)
             }
 
             const int nextState = QAgent::encodeState(game);
-            agent.update(state, action, reward, nextState);
+            agent.updateWithTraces(state, action, reward, nextState, greedy);
             state = nextState;
 
             if (idleSteps >= maxIdleSteps(GRID_SIZE))

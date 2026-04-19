@@ -68,7 +68,7 @@ make run-graphics     # SDL2 window (requires SDL2)
 
 ## RL agent
 
-The agent uses **tabular Q-learning** with a hand-crafted 32 768-state feature vector:
+The agent uses **tabular Q-learning with eligibility traces** (Watkins's Q(λ)) and a hand-crafted 32 768-state feature vector:
 
 | Feature | Bits | Values |
 |---|---|---|
@@ -80,6 +80,12 @@ The agent uses **tabular Q-learning** with a hand-crafted 32 768-state feature v
 | Food Y distance bin | 2 | 4 (far-left / near-left / near-right / far-right) |
 
 The state space fits in a 512 KiB lookup table, so no neural network is needed.
+
+Training uses **eligibility traces** (λ=0.9) to propagate rewards backward
+through recent state–action pairs, giving the agent credit for moves that set up
+a fruit collection several steps later. Traces follow Watkins's Q(λ): they
+persist through greedy actions but are zeroed on exploratory moves, preserving
+off-policy correctness.
 
 At play time a **flood-fill safety filter** overrides the greedy action when it
 would leave the snake's reachable area smaller than its body length, preventing
@@ -97,10 +103,10 @@ Training progress is printed every 5% of episodes:
 
 ```
 Training: 10000 episodes on 20x20 grid
-  Episode  500/10000 | avg:   1.23 | best:   8 | ε: 0.3162
-  Episode 1000/10000 | avg:   4.87 | best:  22 | ε: 0.1000
+  Episode   500/10000 | avg:   1.49 | best:   11 | ε: 0.7673
+  Episode  1000/10000 | avg:   3.87 | best:   25 | ε: 0.5887
   ...
-  Episode 10000/10000 | avg:  38.14 | best:  71 | ε: 0.0100
+  Episode 10000/10000 | avg:  43.54 | best:   83 | ε: 0.0050
 Q-table saved to build/qtable.bin
 ```
 

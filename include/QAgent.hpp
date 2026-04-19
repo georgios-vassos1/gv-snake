@@ -3,6 +3,7 @@
 
 #include "Game.hpp"
 #include <string>
+#include <vector>
 
 /// Tabular Q-learning agent for Snake.
 ///
@@ -23,16 +24,18 @@
 /// segment ('O').  The border wraps rather than kills, so '*' is ignored.
 class QAgent {
 public:
-    static constexpr int   NUM_STATES   = 32768;
-    static constexpr int   NUM_ACTIONS  = 4;    ///< w, s, a, d
-    static constexpr float ALPHA          = 0.05F; ///< learning rate
-    static constexpr float GAMMA          = 0.95F; ///< discount factor
-    static constexpr float EPSILON_MIN    = 0.005F;
-    static constexpr float REWARD_FRUIT   = 10.0F;
-    static constexpr float REWARD_DEATH   = -10.0F;
-    static constexpr float REWARD_STEP         = -0.01F; ///< small step penalty
-    static constexpr float REWARD_APPROACH     = 0.1F;  ///< bonus per cell closer to food
-    static constexpr float REWARD_SPACE_PENALTY = -0.2F; ///< penalty when reachable area < 2×body
+    static constexpr int   NUM_STATES           = 32768;
+    static constexpr int   NUM_ACTIONS          = 4;     ///< w, s, a, d
+    static constexpr float ALPHA                = 0.05F; ///< learning rate
+    static constexpr float GAMMA                = 0.95F; ///< discount factor
+    static constexpr float EPSILON_MIN          = 0.005F;
+    static constexpr float REWARD_FRUIT         = 10.0F;
+    static constexpr float REWARD_DEATH         = -10.0F;
+    static constexpr float LAMBDA               = 0.9F;   ///< trace decay parameter
+    static constexpr float TRACE_MIN            = 0.001F; ///< prune traces below this
+    static constexpr float REWARD_STEP          = -0.01F; ///< small step penalty
+    static constexpr float REWARD_APPROACH      = 0.1F;   ///< bonus per cell closer to food
+    static constexpr float REWARD_SPACE_PENALTY = -0.2F;  ///< penalty when reachable area < 2×body
 
     /// Maps action index → direction character: {0='w', 1='s', 2='a', 3='d'}.
     static const char ACTIONS[NUM_ACTIONS];
@@ -74,7 +77,9 @@ public:
 
     /// Safe epsilon-greedy: on exploitation uses safeAction; on exploration
     /// picks a random action that is not immediately fatal (no flood-fill, cheap).
-    int safeSelectAction(const Game& game, int state) const;
+    /// If 'greedy' is non-null, *greedy is set to true when the action was the
+    /// greedy (exploitation) choice — needed by Watkins's Q(λ) trace cutoff.
+    int safeSelectAction(const Game& game, int state, bool* greedy = nullptr) const;
 
     /// Pure greedy (argmax Q[state]); use this during evaluation.
     int greedyAction(int state) const;
@@ -88,6 +93,19 @@ public:
     /// Terminal-state update (no successor state):
     ///   Q[s][a] += alpha * (reward - Q[s][a])
     void updateTerminal(int state, int action, float reward);
+
+    // ── Eligibility traces (Watkins's Q(λ)) ─────────────────────────────────
+
+    /// Clear all traces.  Call at the start of each episode.
+    void resetTraces();
+
+    /// TD(λ) update: propagates the TD error through all active traces.
+    /// 'greedy' should be true when the action was the greedy choice; false
+    /// triggers the Watkins cutoff (all traces zeroed after the update).
+    void updateWithTraces(int state, int action, float reward, int nextState, bool greedy);
+
+    /// Terminal-state TD(λ) update (no successor).
+    void updateTerminalWithTraces(int state, int action, float reward);
 
     /// Multiply epsilon by (1 - decayRate), clamped to EPSILON_MIN.
     void  decayEpsilon(float decayRate);
@@ -117,6 +135,14 @@ public:
 private:
     float Q_[NUM_STATES][NUM_ACTIONS];
     float epsilon_;
+
+    /// Sparse active eligibility traces.
+    struct Trace {
+        int   state;
+        int   action;
+        float value;
+    };
+    std::vector<Trace> traces_;
 
     /// Map direction character to 0-based index.
     static int dirIndex(char dir);
