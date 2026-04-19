@@ -13,8 +13,7 @@
 #include "GraphicsRenderer.hpp"
 #endif
 
-static const int GRID_SIZE       = 50;
-static const int TRAIN_GRID_SIZE = 20; ///< smaller grid → shorter episodes → faster training
+static const int GRID_SIZE = 20;
 
 // ── Terminal setup/teardown ───────────────────────────────────────────────────
 
@@ -36,8 +35,7 @@ static int maxIdleSteps(int border)
 
 static void runTraining(int episodes, const std::string& qtablePath)
 {
-    std::printf("Training: %d episodes on %dx%d grid\n", episodes, TRAIN_GRID_SIZE,
-                TRAIN_GRID_SIZE);
+    std::printf("Training: %d episodes on %dx%d grid\n", episodes, GRID_SIZE, GRID_SIZE);
     std::printf("  %-28s  %6s  %6s  %8s\n", "Progress", "AvgScr", "Best", "Epsilon");
     std::fflush(stdout);
 
@@ -49,7 +47,7 @@ static void runTraining(int episodes, const std::string& qtablePath)
     const int reportEvery = std::max(1, episodes / 20); // 20 progress lines
 
     for (int ep = 1; ep <= episodes; ++ep) {
-        Game game(TRAIN_GRID_SIZE);
+        Game game(GRID_SIZE);
         int  state     = QAgent::encodeState(game);
         int  idleSteps = 0;
 
@@ -76,7 +74,7 @@ static void runTraining(int episodes, const std::string& qtablePath)
             agent.update(state, action, reward, nextState);
             state = nextState;
 
-            if (idleSteps >= maxIdleSteps(TRAIN_GRID_SIZE))
+            if (idleSteps >= maxIdleSteps(GRID_SIZE))
                 break;
         }
 

@@ -68,44 +68,57 @@ static void test_encodeState_range()
         PASS("encodeState always in [0, NUM_STATES)");
 }
 
-// ── Test 2: encodeState food direction bits match actual positions ────────────
+// ── Test 2: encodeState food distance bins match actual positions ─────────────
 // Extracts bits [3:0] from the encoded state and independently computes what
-// they should be from game.getHead() and game.getFruit().  If the bit packing
-// or the up/down/left/right predicates are wrong this test will catch it.
+// they should be using the same foodDistBin formula.
+// bits [3:2] = foodXBin  (0=far-above, 1=near-above-or-same, 2=near-below, 3=far-below)
+// bits [1:0] = foodYBin  (0=far-left,  1=near-left-or-same,  2=near-right,  3=far-right)
 
 static void test_encodeState_food_bits()
 {
-    std::printf("\n-- Test 2: encodeState food direction bits --\n");
+    std::printf("\n-- Test 2: encodeState food distance bins --\n");
     bool ok = true;
     for (int trial = 0; trial < 100; ++trial) {
-        Game         game(20);
-        const int    encoded  = QAgent::encodeState(game);
-        const Point& head     = game.getHead();
-        const Point& food     = game.getFruit();
+        const Game   game(20);
+        const int    encoded = QAgent::encodeState(game);
+        const Point& head    = game.getHead();
+        const Point& food    = game.getFruit();
 
-        // bits [3:0] in the encoding:
-        //   bit 3 = foodUp    = fruit.x < head.x
-        //   bit 2 = foodDown  = fruit.x > head.x
-        //   bit 1 = foodLeft  = fruit.y < head.y
-        //   bit 0 = foodRight = fruit.y > head.y
+        const int interior     = 20 - 2;
         const int actualBits   = encoded & 0xF;
-        const int expUp        = (food.getX() < head.getX()) ? 1 : 0;
-        const int expDown      = (food.getX() > head.getX()) ? 1 : 0;
-        const int expLeft      = (food.getY() < head.getY()) ? 1 : 0;
-        const int expRight     = (food.getY() > head.getY()) ? 1 : 0;
-        const int expectedBits = (expUp << 3) | (expDown << 2) | (expLeft << 1) | expRight;
+        const int expXBin      = QAgent::foodDistBin(food.getX() - head.getX(), interior);
+        const int expYBin      = QAgent::foodDistBin(food.getY() - head.getY(), interior);
+        const int expectedBits = (expXBin << 2) | expYBin;
 
         if (actualBits != expectedBits) {
-            FAIL("food bits mismatch (trial %d): expected 0x%X, got 0x%X "
-                 "(head=(%d,%d) fruit=(%d,%d))",
-                 trial, expectedBits, actualBits,
-                 head.getX(), head.getY(), food.getX(), food.getY());
+            FAIL("food bins mismatch (trial %d): expected 0x%X, got 0x%X "
+                 "(head=(%d,%d) fruit=(%d,%d) dx=%d dy=%d)",
+                 trial, expectedBits, actualBits, head.getX(), head.getY(), food.getX(),
+                 food.getY(), food.getX() - head.getX(), food.getY() - head.getY());
             ok = false;
             break;
         }
     }
     if (ok)
-        PASS("encodeState food direction bits match actual head/fruit positions");
+        PASS("encodeState food distance bins match actual head/fruit positions");
+}
+
+// ── Test 2b: foodDistBin bucketing ───────────────────────────────────────────
+// With interior=20 (thresh=5): buckets are delta<-5, -5<=delta<=0, 0<delta<=5, delta>5.
+
+static void test_foodDistBin()
+{
+    std::printf("\n-- Test 2b: foodDistBin bucketing --\n");
+    const int interior = 20; // thresh = max(1, 20/4) = 5
+    EXPECT_EQ(QAgent::foodDistBin(-10, interior), 0, "foodDistBin: far negative → 0");
+    EXPECT_EQ(QAgent::foodDistBin(-5, interior), 0, "foodDistBin: -thresh → 0");
+    EXPECT_EQ(QAgent::foodDistBin(-4, interior), 1, "foodDistBin: near negative → 1");
+    EXPECT_EQ(QAgent::foodDistBin(-1, interior), 1, "foodDistBin: just above → 1");
+    EXPECT_EQ(QAgent::foodDistBin(0, interior), 1, "foodDistBin: same → 1");
+    EXPECT_EQ(QAgent::foodDistBin(1, interior), 2, "foodDistBin: just below → 2");
+    EXPECT_EQ(QAgent::foodDistBin(5, interior), 2, "foodDistBin: +thresh → 2");
+    EXPECT_EQ(QAgent::foodDistBin(6, interior), 3, "foodDistBin: far positive → 3");
+    EXPECT_EQ(QAgent::foodDistBin(15, interior), 3, "foodDistBin: very far positive → 3");
 }
 
 // ── Test 3: greedyAction returns the argmax of Q values ──────────────────────
@@ -175,8 +188,7 @@ static void test_epsilon_decay()
 
     // Further decay must stay clamped.
     agent.decayEpsilon(0.5F);
-    EXPECT_NEAR(agent.getEpsilon(), QAgent::EPSILON_MIN, 1e-6F,
-                "epsilon clamped at EPSILON_MIN");
+    EXPECT_NEAR(agent.getEpsilon(), QAgent::EPSILON_MIN, 1e-6F, "epsilon clamped at EPSILON_MIN");
 }
 
 // ── Test 6: save / load round-trip ───────────────────────────────────────────
@@ -313,7 +325,7 @@ static void test_floodFill_range()
     std::printf("\n-- Test 9: floodFill returns plausible count --\n");
     bool ok = true;
     for (int trial = 0; trial < 20; ++trial) {
-        Game         game(20);
+        const Game   game(20);
         const Point& head      = game.getHead();
         const int    reachable = QAgent::floodFill(game, head.getX(), head.getY());
         const int    interior  = (20 - 2) * (20 - 2); // 324

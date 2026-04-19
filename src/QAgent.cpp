@@ -100,6 +100,20 @@ bool QAgent::isDangerousN(const Game& game, char absDir, int steps)
     return game.grid()[x][y] == 'O';
 }
 
+// ── State encoding helpers ────────────────────────────────────────────────────
+
+int QAgent::foodDistBin(int delta, int interior)
+{
+    const int thresh = std::max(1, interior / 4);
+    if (delta < -thresh)
+        return 0; // far in negative direction
+    if (delta <= 0)
+        return 1; // near in negative direction or same
+    if (delta <= thresh)
+        return 2; // near in positive direction
+    return 3;     // far in positive direction
+}
+
 // ── State encoding ────────────────────────────────────────────────────────────
 
 int QAgent::encodeState(const Game& game)
@@ -124,15 +138,15 @@ int QAgent::encodeState(const Game& game)
     const int dr2 = isDangerousN(game, absRight, 2) ? 1 : 0;
     const int dr3 = isDangerousN(game, absRight, 3) ? 1 : 0;
 
-    const int foodUp    = (food.getX() < head.getX()) ? 1 : 0;
-    const int foodDown  = (food.getX() > head.getX()) ? 1 : 0;
-    const int foodLeft  = (food.getY() < head.getY()) ? 1 : 0;
-    const int foodRight = (food.getY() > head.getY()) ? 1 : 0;
+    const int interior = game.getBorder() - 2;
+    const int foodXBin = foodDistBin(food.getX() - head.getX(), interior);
+    const int foodYBin = foodDistBin(food.getY() - head.getY(), interior);
 
-    // bits [14:13] direction | [12:10] straight | [9:7] left | [6:4] right | [3:0] food
+    // bits [14:13] direction | [12:10] straight | [9:7] left | [6:4] right | [3:2] foodX | [1:0]
+    // foodY
     const int idx = (dirIndex(dir) << 13) | (ds1 << 12) | (ds2 << 11) | (ds3 << 10) | (dl1 << 9) |
-                    (dl2 << 8) | (dl3 << 7) | (dr1 << 6) | (dr2 << 5) | (dr3 << 4) | (foodUp << 3) |
-                    (foodDown << 2) | (foodLeft << 1) | (foodRight << 0);
+                    (dl2 << 8) | (dl3 << 7) | (dr1 << 6) | (dr2 << 5) | (dr3 << 4) |
+                    (foodXBin << 2) | foodYBin;
 
     assert(idx >= 0 && idx < NUM_STATES);
     return idx;

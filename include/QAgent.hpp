@@ -7,14 +7,15 @@
 /// Tabular Q-learning agent for Snake.
 ///
 /// State space (32768 states):
-///   bits [14:13]  current direction  w=0, s=1, a=2, d=3  →  4 values
-///   bits [12:10]  danger straight 1/2/3 steps ahead       →  8 values
-///   bits  [9: 7]  danger left    1/2/3 steps ahead        →  8 values
-///   bits  [6: 4]  danger right   1/2/3 steps ahead        →  8 values
-///   bit   [3]     food is above head  (fruit.x < head.x)  →  2 values
-///   bit   [2]     food is below head  (fruit.x > head.x)  →  2 values
-///   bit   [1]     food is left  of head (fruit.y < head.y) → 2 values
-///   bit   [0]     food is right of head (fruit.y > head.y) → 2 values
+///   bits [14:13]  current direction  w=0, s=1, a=2, d=3         →  4 values
+///   bits [12:10]  danger straight 1/2/3 steps ahead              →  8 values
+///   bits  [9: 7]  danger left    1/2/3 steps ahead               →  8 values
+///   bits  [6: 4]  danger right   1/2/3 steps ahead               →  8 values
+///   bits  [3: 2]  food X bin  0=far-above  1=near-above-or-same  →  4 values
+///                             2=near-below 3=far-below
+///   bits  [1: 0]  food Y bin  0=far-left   1=near-left-or-same   →  4 values
+///                             2=near-right 3=far-right
+///   (near = within interior/4 cells; far = beyond interior/4 cells)
 ///
 ///   Total: 4 × 2^13 = 32768 states, 4 actions → 512 KiB Q-table.
 ///
@@ -40,6 +41,16 @@ public:
 
     /// Encode the current game state as an integer in [0, NUM_STATES).
     static int encodeState(const Game& game);
+
+    // ── Food distance binning ─────────────────────────────────────────────────
+
+    /// Bin a signed axis delta into [0, 3]:
+    ///   0 = far negative  (delta < -thresh)
+    ///   1 = near negative or same  (-thresh <= delta <= 0)
+    ///   2 = near positive  (0 < delta <= thresh)
+    ///   3 = far positive   (delta > thresh)
+    /// thresh = max(1, interior/4) so the threshold scales with board size.
+    static int foodDistBin(int delta, int interior);
 
     // ── Safety filter ─────────────────────────────────────────────────────────
 
